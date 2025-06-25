@@ -78,8 +78,8 @@ const args = parseArgs(process.argv, {
             }
         };
 
-        const downloadPath = path.resolve(config.downloadPath).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "");
-        await downloadTrack(formattedTrackDetails, downloadPath).join(path.sep), quality);
+        const downloadPath = path.resolve(config.downloadPath).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep);
+        await downloadTrack(formattedTrackDetails, downloadPath, quality);
     }
 
     console.log("Done downloading tracks");
