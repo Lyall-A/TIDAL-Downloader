@@ -78,7 +78,8 @@ const args = parseArgs(process.argv, {
             }
         };
 
-        await downloadTrack(formattedTrackDetails, path.resolve(config.downloadPath).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep), quality);
+        const downloadPath = path.resolve(config.downloadPath).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "");
+        await downloadTrack(formattedTrackDetails, downloadPath).join(path.sep), quality);
     }
 
     console.log("Done downloading tracks");
@@ -141,7 +142,8 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
         tracknumber: trackDetails.track.trackNumber,
         disctotal: trackDetails.album.numberOfVolumes,
         discnumber: trackDetails.track.volumeNumber,
-        lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics
+        lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics,
+        ...(config.customMetadata || { })
     };
     // console.log(metadata);
     await embedMetadata(`${downloadPath}.${extension}`, metadata);
