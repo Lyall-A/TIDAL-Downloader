@@ -5,31 +5,99 @@ const requestDeviceAuthorization = require("./utils/requestDeviceAuthorization")
 const getToken = require("./utils/getToken");
 const getPlaybackInfo = require("./utils/getPlaybackInfo");
 const getAlbum = require("./utils/getAlbum");
+const getArtist = require("./utils/getArtist");
+const getTrack = require("./utils/getTrack");
 const parseManifest = require("./utils/parseManifest");
 const extractAudioStream = require("./utils/extractAudioStream");
+const parseArgs = require("./utils/parseArgs");
+const formatString = require("./utils/formatString");
+const embedMetadata = require("./utils/embedMetadata");
+const getLyrics = require("./utils/getLyrics");
 
 const config = require("./config.json");
 const secrets = fs.existsSync("./secrets.json") ? JSON.parse(fs.readFileSync("./secrets.json")) : { };
+
+const args = parseArgs(process.argv, {
+
+});
 
 (async () => {
     console.log("Authorizing...");
     await authorize();
 
-    // TODO: args, obviously
-    const album = await getAlbum("370144434", secrets);
-    
-    for (const track of album.rows.find(i => i.modules[0].type === "ALBUM_ITEMS").modules[0].pagedList.items.map(i => i.item)) {
-        await downloadTrack(track);
+    const tracks = []; // Tracks to be downloaded
+
+    console.log(`Getting info on ${args.tracks.length} track(s)...`);
+    for (const trackId of args.tracks) {
+        const track = await getTrack(trackId, secrets);
+        tracks.push({
+            ...track.track,
+            album: track.album,
+            artists: track.artists
+        });
     }
+
+    console.log(`Getting info on ${args.albums.length} album(s)...`);
+    for (const albumId of args.albums) {
+        const album = await getAlbum(albumId, secrets);
+        tracks.push(...album.items.map(i => {
+            i.album = album.album;
+            return i;
+        }));
+    }
+
+    console.log(`Getting info on ${args.artists.length} artist(s)...`);
+    for (const artistId of args.artists) {
+        const artist = await getArtist(artistId, secrets);
+        const albums = [...artist.albums, ...artist.singles];
+        console.log(`  Getting info on ${albums.length} albums...`);
+        for (const albumId of albums.map(i => i.id)) {
+            const album = await getAlbum(albumId, secrets);
+            tracks.push(...album.items.map(i => {
+                i.album = album.album;
+            }));
+        }
+    }
+
+    console.log(`\nDownloading ${tracks.length} tracks...`);
+
+    let quality = args.quality === "low" ? "HIGH" : args.quality === "high" ? "LOSSLESS" : args.quality === "max" ? "HI_RES_LOSSLESS" : config.quality;
+
+    for (const track of tracks) {
+        const formattedTrackDetails = {
+            artist: track.artists[0],
+            album: {
+                ...track.album,
+                artist: track.album.artists?.[0],
+                date: new Date(track.album.releaseDate || track.streamStartDate),
+                year: new Date(track.album.releaseDate || track.streamStartDate).getFullYear()
+            },
+            track: {
+                ...track,
+                trackNumPadded: track.trackNumber.toString().padStart(2, "0")
+            }
+        };
+
+        await downloadTrack(formattedTrackDetails, path.resolve(config.downloadPath).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep), quality);
+    }
+
+    console.log("Done downloading tracks");
 })();
 
-async function downloadTrack(track, quality) {
+async function downloadTrack(trackDetails, downloadPath, quality) {
     console.log();
     log("Getting playback info...");
     
+    let lyrics;
     let buffer;
-    const playbackInfo = await getPlaybackInfo(track.id, secrets, quality);
+    const playbackInfo = await getPlaybackInfo(trackDetails.track.id, secrets, quality);
     const manifest = parseManifest(Buffer.from(playbackInfo.manifest, "base64").toString(), playbackInfo.manifestMimeType);
+    const extension = manifest.codecs === "flac" ? "flac" : "m4a"; // TODO: is it safe to assume its AAC if not FLAC?
+    
+    if (args.lyrics || config.getLyrics) {
+        log("Getting lyrics...");
+        lyrics = await getLyrics(trackDetails.track.id, secrets);
+    }
 
     await new Promise((resolve, reject) => {
         (function downloadSegment(segmentIndex) {
@@ -52,18 +120,38 @@ async function downloadTrack(track, quality) {
                 }
             });
         })(0);
-    })
+    });
 
-    log("Extracting audio...");
-    // TODO: proper output paths
-    fs.writeFileSync(`./Downloads/${track.title}.mp4`, buffer);
-    await extractAudioStream(`./Downloads/${track.title}.mp4`, `./Downloads/${track.title}.flac`);
-    fs.rmSync(`./Downloads/${track.title}.mp4`);
+    log(`Saving as ${extension}...`);
+    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+    fs.writeFileSync(`${downloadPath}.mp4`, buffer);
+    await extractAudioStream(`${downloadPath}.mp4`, `${downloadPath}.${extension}`);
+    fs.rmSync(`${downloadPath}.mp4`);
+
+    log("Embedding metadata...");
+    const metadata = {
+        title: trackDetails.track.title,
+        artist: trackDetails.artist.name,
+        album: trackDetails.album.title,
+        albumartist: trackDetails.album.artist?.name || trackDetails.artist.name,
+        date: `${trackDetails.album.date.getFullYear()}-${(trackDetails.album.date.getMonth() + 1).toString().padStart(2, "0")}-${trackDetails.album.date.getDate().toString().padStart(2, "0")}`,
+        copyright: trackDetails.track.copyright,
+        originalyear: trackDetails.album.year,
+        tracktotal: trackDetails.album.numberOfTracks,
+        tracknumber: trackDetails.track.trackNumber,
+        disctotal: trackDetails.album.numberOfVolumes,
+        discnumber: trackDetails.track.volumeNumber,
+        lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics
+    };
+    // console.log(metadata);
+    await embedMetadata(`${downloadPath}.${extension}`, metadata);
+
+    log("Done!");
     
     function log(msg) {
         process.stdout.moveCursor(0, -1);
         process.stdout.clearLine();
-        process.stdout.write(`Downloading track "${track.title}": ${msg}\n`);
+        process.stdout.write(`Downloading track "${trackDetails.track.title} - ${trackDetails.artist.name}": ${msg}\n`);
     }
 }
 

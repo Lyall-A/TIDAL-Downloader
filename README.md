@@ -1,5 +1,18 @@
 # TIDAL Downloader
-please do not sue me
+
+
+## Arguments
+### --track \<id>
+* Download a single track
+### --album \<id>
+* Download all tracks from an album
+### --artist \<id>
+* Download all tracks from an artist
+### --lyrics yes
+* Embed lyrics to metadata, uses value from `config.json` if not provided
+
+<small>please do not sue me</small>
+
 
 ## How TIDAL authenticates a browser
 * Browser sends request to `https://login.tidal.com/api/email/user/existing` containing a client ID, code challenge, redirect URI, scope, login credentials and more

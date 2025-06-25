@@ -1,7 +1,11 @@
 {
+    "downloadPath": "./Downloads/{{artist.name}}/{{album.title}} ({{album.year}})/{{artist.name}} - {{album.title}} - {{track.title}} - {{track.trackNumPadded}}",
+    "quality": "HI_RES_LOSSLESS",
+    "getLyrics": true,
     "clientId": "1ozX4gKj6qmZu4rg",
     "clientSecret": "nc0ZouR3w3YSLN1dyvhTUXZE9dRwDdiV1ivFNFhImkE=",
     "ffmpegPath": "ffmpeg",
+    "kid3CliPath": "kid3-cli",
     "scope": ["r_usr", "w_usr"],
     "segmentWaitMin": 50,
     "segmentWaitMax": 100

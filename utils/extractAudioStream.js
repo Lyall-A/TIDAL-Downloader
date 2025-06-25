@@ -12,10 +12,11 @@ function extractAudioStream(inputPath, outputPath) {
             "-y"
         ]);
 
-        // ffmpegProcess.stderr.on("data", data => console.log(data.toString()));
+        let output = "";
+        ffmpegProcess.stderr.on("data", data => output += data);
 
         ffmpegProcess.on("exit", code => {
-            if (code) return reject();
+            if (code) return reject(output);
             return resolve();
         });
     });
