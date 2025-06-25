@@ -96,7 +96,7 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
     
     if (args.lyrics || config.getLyrics) {
         log("Getting lyrics...");
-        lyrics = await getLyrics(trackDetails.track.id, secrets);
+        lyrics = await getLyrics(trackDetails.track.id, secrets).catch(err => log("Couldn't get lyrics!"));
     }
 
     await new Promise((resolve, reject) => {
