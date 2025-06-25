@@ -1,0 +1,8 @@
+{
+    "clientId": "1ozX4gKj6qmZu4rg",
+    "clientSecret": "nc0ZouR3w3YSLN1dyvhTUXZE9dRwDdiV1ivFNFhImkE=",
+    "ffmpegPath": "ffmpeg",
+    "scope": ["r_usr", "w_usr"],
+    "segmentWaitMin": 50,
+    "segmentWaitMax": 100
+}
