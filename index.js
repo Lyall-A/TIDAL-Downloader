@@ -178,6 +178,7 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
         tracknumber: trackDetails.track.trackNumber,
         disctotal: trackDetails.album.numberOfVolumes,
         discnumber: trackDetails.track.volumeNumber,
+        replaygain_track_gain: trackDetails.track.replayGain,
         lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics,
         ...(config.customMetadata || { })
     };
