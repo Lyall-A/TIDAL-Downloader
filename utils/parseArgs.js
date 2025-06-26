@@ -4,6 +4,8 @@ function parseArgs(argv = process.argv, argOptions) {
         tracks: [],
         artists: [],
         albums: [],
+        playlists: [],
+        search: [],
     };
 
     argv.forEach((arg, argIndex) => {
@@ -17,10 +19,10 @@ function parseArgs(argv = process.argv, argOptions) {
 
         if (!value) return;
 
-        if (args[`${argName}s`]) {
-            args[`${argName}s`].push(value);
+        if (args[argName] || args[`${argName}s`]) {
+            args[args[argName] ? argName : `${argName}s`].push(value);
         } else {
-            args[argName] = value.toLowerCase();
+            args[argName] = value;
         }
     });
 

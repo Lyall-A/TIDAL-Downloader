@@ -7,12 +7,14 @@ const getPlaybackInfo = require("./utils/getPlaybackInfo");
 const getAlbum = require("./utils/getAlbum");
 const getArtist = require("./utils/getArtist");
 const getTrack = require("./utils/getTrack");
+const getLyrics = require("./utils/getLyrics");
+const getPlaylist = require("./utils/getPlaylist");
+const search = require("./utils/search");
 const parseManifest = require("./utils/parseManifest");
 const extractAudioStream = require("./utils/extractAudioStream");
 const parseArgs = require("./utils/parseArgs");
 const formatString = require("./utils/formatString");
 const embedMetadata = require("./utils/embedMetadata");
-const getLyrics = require("./utils/getLyrics");
 
 const config = require("./config.json");
 const secrets = fs.existsSync("./secrets.json") ? JSON.parse(fs.readFileSync("./secrets.json")) : { };
@@ -27,35 +29,66 @@ const args = parseArgs(process.argv, {
 
     const tracks = []; // Tracks to be downloaded
 
-    console.log(`Getting info on ${args.tracks.length} track(s)...`);
-    for (const trackId of args.tracks) {
-        const track = await getTrack(trackId, secrets);
-        tracks.push({
-            ...track.track,
-            album: track.album,
-            artists: track.artists
-        });
+    if (args.tracks.length) {
+        console.log(`Getting info on ${args.tracks.length} track(s)...`);
+        for (const trackId of args.tracks) {
+            const track = await getTrack(trackId, secrets);
+            tracks.push({
+                ...track.track,
+                album: track.album,
+                artists: track.artists
+            });
+        }
     }
 
-    console.log(`Getting info on ${args.albums.length} album(s)...`);
-    for (const albumId of args.albums) {
-        const album = await getAlbum(albumId, secrets);
-        tracks.push(...album.items.map(i => {
-            i.album = album.album;
-            return i;
-        }));
-    }
-
-    console.log(`Getting info on ${args.artists.length} artist(s)...`);
-    for (const artistId of args.artists) {
-        const artist = await getArtist(artistId, secrets);
-        const albums = [...artist.albums, ...artist.singles];
-        console.log(`  Getting info on ${albums.length} albums...`);
-        for (const albumId of albums.map(i => i.id)) {
+    if (args.albums.length) {
+        console.log(`Getting info on ${args.albums.length} album(s)...`);
+        for (const albumId of args.albums) {
             const album = await getAlbum(albumId, secrets);
-            tracks.push(...album.items.map(i => {
-                i.album = album.album;
-            }));
+            tracks.push(...album.items.map(i => ({
+                ...i,
+                album: album.album
+            })));
+        }
+    }
+
+    if (args.artists.length) {
+        console.log(`Getting info on ${args.artists.length} artist(s)...`);
+        for (const artistId of args.artists) {
+            const artist = await getArtist(artistId, secrets);
+            const albums = [...artist.albums, ...artist.singles];
+            console.log(`  Getting info on ${albums.length} albums...`);
+            for (const albumId of albums.map(i => i.id)) {
+                const album = await getAlbum(albumId, secrets);
+                tracks.push(...album.items.map(i => ({
+                    ...i,
+                    album: album.album
+                })));
+            }
+        }
+    }
+
+    if (args.playlists.length) {
+        console.log(`Getting info on ${args.playlists.length} playlist(s)...`);
+        for (const playlistId of args.playlists) {
+            const playlist = await getPlaylist(playlistId, secrets);
+            tracks.push(...playlist.items.map(i => ({
+                ...i,
+                playlist: playlist.playlist
+            })));
+        }
+    }
+
+    if (args.search) {
+        console.log(`Getting info on ${args.search.length} search(es)`);
+        for (const query of args.search) {
+            const result = await search(query, 1, secrets).then(i => i.top[0]);
+            if (!result) {
+                console.log(`  No search results for "${query}"`);
+                continue;
+            }
+            console.log(`  Found ${result.type.toLowerCase().substring(0, result.type.length - 1)} "${result.value.title} - ${result.value.artists[0].name}"`);
+            tracks.push(result.value);
         }
     }
 
@@ -75,10 +108,11 @@ const args = parseArgs(process.argv, {
             track: {
                 ...track,
                 trackNumPadded: track.trackNumber.toString().padStart(2, "0")
-            }
+            },
+            playlist: track.playlist
         };
 
-        const downloadPath = path.resolve(config.downloadPath).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep);
+        const downloadPath = path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep);
         await downloadTrack(formattedTrackDetails, downloadPath, quality);
     }
 

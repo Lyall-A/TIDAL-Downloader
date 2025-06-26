@@ -8,6 +8,16 @@
 * Download all tracks from an album
 ### --artist \<id>
 * Download all tracks from an artist
+### --playlist \<id>
+* Download all tracks from a playlist
+### --search \<query>
+* Download a album/artist/playlist from a search result
+### --quality <low|high|max>
+* Set download quality, uses value from `config.json` if not provided
+### --directory <path>
+* Set download directory, supports formatting, uses value from `config.json` if not provided
+### --filename <filename>
+* Set download filename, supports formatting, uses value from `config.json` if not provided
 ### --lyrics yes
 * Embed lyrics to metadata, uses value from `config.json` if not provided
 
