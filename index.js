@@ -183,7 +183,7 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
         ...(config.customMetadata || { })
     };
     // console.log(metadata);
-    await embedMetadata(`${downloadPath}.${extension}`, metadata);
+    await embedMetadata(`${downloadPath}${extension}`, metadata);
 
     log("Done!");
     
