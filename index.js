@@ -127,7 +127,9 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
     let buffer;
     const playbackInfo = await getPlaybackInfo(trackDetails.track.id, secrets, quality);
     const manifest = parseManifest(Buffer.from(playbackInfo.manifest, "base64").toString(), playbackInfo.manifestMimeType);
-    const extension = manifest.codecs === "flac" ? "flac" : "m4a"; // TODO: is it safe to assume its AAC if not FLAC?
+    const extension = manifest.codecs === "flac" ? ".flac" : ".m4a"; // TODO: is it safe to assume its AAC if not FLAC?
+
+    if (fs.existsSync(`${downloadPath}${extension}`) && !config.overwriteExisting) return log("Already downloaded!");
     
     if (args.lyrics || config.getLyrics) {
         log("Getting lyrics...");
@@ -160,7 +162,7 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
     log(`Saving as ${extension}...`);
     fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
     fs.writeFileSync(`${downloadPath}.mp4`, buffer);
-    await extractAudioStream(`${downloadPath}.mp4`, `${downloadPath}.${extension}`);
+    await extractAudioStream(`${downloadPath}.mp4`, `${downloadPath}${extension}`);
     fs.rmSync(`${downloadPath}.mp4`);
 
     log("Embedding metadata...");

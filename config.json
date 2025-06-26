@@ -6,6 +6,7 @@
     "customMetadata": {
         "source": "TIDAL"
     },
+    "overwriteExisting": false,
     "clientId": "1ozX4gKj6qmZu4rg",
     "clientSecret": "nc0ZouR3w3YSLN1dyvhTUXZE9dRwDdiV1ivFNFhImkE=",
     "ffmpegPath": "ffmpeg",
