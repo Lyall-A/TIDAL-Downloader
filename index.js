@@ -79,7 +79,7 @@ const args = parseArgs(process.argv, {
         }
     }
 
-    if (args.search) {
+    if (args.search.length) {
         console.log(`Getting info on ${args.search.length} search(es)`);
         for (const query of args.search) {
             const result = await search(query, 1, secrets).then(i => i.top[0]);
