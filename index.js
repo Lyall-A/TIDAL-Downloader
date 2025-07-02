@@ -112,7 +112,9 @@ const args = parseArgs(process.argv, {
             playlist: track.playlist
         };
 
-        const downloadPath = path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename).split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep);
+        const unformattedDownloadPath = path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename);
+        const { root: downloadPathRoot } = path.parse(unformattedDownloadPath);
+        const downloadPath = `${downloadPathRoot}${unformattedDownloadPath.replace(downloadPathRoot, "").split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep)}`;
         await downloadTrack(formattedTrackDetails, downloadPath, quality);
     }
 
@@ -183,7 +185,9 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
         ...(config.customMetadata || { })
     };
     // console.log(metadata);
-    await embedMetadata(`${downloadPath}${extension}`, metadata);
+    await embedMetadata(`${downloadPath}${extension}`, metadata).catch(err => {
+        console.log(`Failed to embed metadata!`, err);
+    });
 
     log("Done!");
     

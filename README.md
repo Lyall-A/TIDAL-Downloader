@@ -23,6 +23,9 @@
 
 <small>please do not sue me</small>
 
+## Dependencies
+* [Node.js](https://nodejs.org)
+* [Kid3-cli](https://kid3.kde.org) - Optional. for embedding metadata
 
 ## How TIDAL authenticates a browser
 * Browser sends request to `https://login.tidal.com/api/email/user/existing` containing a client ID, code challenge, redirect URI, scope, login credentials and more
