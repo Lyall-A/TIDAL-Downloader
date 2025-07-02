@@ -99,7 +99,7 @@ const args = parseArgs(process.argv, {
     for (const track of tracks) {
         const formattedTrackDetails = {
             artist: track.artists[0],
-            albumArtist: track.album.artists[0],
+            albumArtist: track.album.artist?.[0] || track.artists[0],
             album: {
                 ...track.album,
                 artist: track.album.artists?.[0],
