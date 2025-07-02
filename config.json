@@ -1,5 +1,5 @@
 {
-    "downloadDirectory": "./Downloads/{{artist.name}}/{{album.title}} ({{album.year}})",
+    "downloadDirectory": "./Downloads/{{albumArtist.name}}/{{album.title}} ({{album.year}})",
     "downloadFilename": "{{artist.name}} - {{album.title}} - {{track.title}} - {{track.trackNumPadded}}",
     "quality": "HI_RES_LOSSLESS",
     "getLyrics": true,
