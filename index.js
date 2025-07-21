@@ -293,9 +293,9 @@ async function downloadTrack(details, downloadPath, quality) {
             artist: details.artist.name, // TODO: add all artists?
             album: details.album.title,
             albumartist: details.albumArtist.name, // TODO: add all artists?
-            date: details.releaseDate,
+            date: details.album.releaseDate,
             copyright: details.track.copyright,
-            originalyear: details.album.year,
+            originalyear: details.albumYear,
             tracktotal: details.album.trackCount,
             tracknumber: details.track.trackNumber,
             disctotal: details.album.volumeCount,

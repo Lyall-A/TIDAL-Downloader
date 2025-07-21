@@ -5,7 +5,7 @@ const config = require("../config.json");
 function embedMetadata(file, metadata) {
     return new Promise((resolve, reject) => {
         const kid3CliProcess = child_process.spawn(config.kid3CliPath, [
-            ...Object.entries(metadata).filter(i => i[1] !== undefined).map(([key, value]) => [
+            ...Object.entries(metadata).filter(i => i[1] !== undefined && i[1] !== null).map(([key, value]) => [
                 "-c",
                 `set "${key.toString().replace(/"/g, i => `\\${i}`)}" "${value.toString().replace(/"/g, i => `\\${i}`)}"`
             ]).flat(),
