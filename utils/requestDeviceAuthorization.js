@@ -1,5 +1,7 @@
+const { config } = require("../globals");
+
 function requestDeviceAuthorization(clientId, scope) {
-    return fetch(`https://auth.tidal.com/v1/oauth2/device_authorization`, {
+    return fetch(`${config.authApiBaseUrl}/oauth2/device_authorization`, {
         method: "POST",
         body: new URLSearchParams({
             method: "POST",

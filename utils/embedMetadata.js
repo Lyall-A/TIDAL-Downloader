@@ -15,8 +15,11 @@ function embedMetadata(file, metadata) {
         let output = "";
         kid3CliProcess.stdout.on("data", data => output += data);
 
-        kid3CliProcess.on("exit", code => {
-            if (code) return reject(output);
+        kid3CliProcess.on("error", (err) => {
+            return reject(err);
+        });
+
+        kid3CliProcess.on("exit", () => {
             return resolve();
         });
     });

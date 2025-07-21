@@ -16,8 +16,7 @@ const parseArgs = require("./utils/parseArgs");
 const formatString = require("./utils/formatString");
 const embedMetadata = require("./utils/embedMetadata");
 
-const config = require("./config.json");
-const secrets = fs.existsSync("./secrets.json") ? JSON.parse(fs.readFileSync("./secrets.json")) : { };
+const { config, secrets } = require("./globals");
 
 const args = parseArgs(process.argv, {
 
@@ -27,115 +26,225 @@ const args = parseArgs(process.argv, {
     console.log("Authorizing...");
     await authorize();
 
-    const tracks = []; // Tracks to be downloaded
+    const tracks = [];
+    const albums = [];
+    const artists = [];
+
+    const queue = []; // Tracks to be downloaded
 
     if (args.tracks.length) {
-        console.log(`Getting info on ${args.tracks.length} track(s)...`);
+        // console.log(`Getting info on ${args.tracks.length} track(s)...`);
         for (const trackId of args.tracks) {
-            const track = await getTrack(trackId, secrets);
-            tracks.push({
-                ...track.track,
-                album: track.album,
-                artists: track.artists
-            });
+            await addTrack(trackId);
         }
     }
 
     if (args.albums.length) {
-        console.log(`Getting info on ${args.albums.length} album(s)...`);
+        // console.log(`Getting info on ${args.albums.length} album(s)...`);
         for (const albumId of args.albums) {
-            const album = await getAlbum(albumId, secrets);
-            tracks.push(...album.items.map(i => ({
-                ...i,
-                album: album.album
-            })));
+            await addAlbum(albumId);
         }
     }
 
     if (args.artists.length) {
-        console.log(`Getting info on ${args.artists.length} artist(s)...`);
+        // console.log(`Getting info on ${args.artists.length} artist(s)...`);
         for (const artistId of args.artists) {
-            const artist = await getArtist(artistId, secrets);
-            const albums = [...artist.albums, ...artist.singles];
-            console.log(`  Getting info on ${albums.length} albums...`);
-            for (const albumId of albums.map(i => i.id)) {
-                const album = await getAlbum(albumId, secrets);
-                tracks.push(...album.items.map(i => ({
-                    ...i,
-                    album: album.album
-                })));
-            }
+            await addArtist(artistId);
         }
     }
 
     if (args.playlists.length) {
-        console.log(`Getting info on ${args.playlists.length} playlist(s)...`);
-        for (const playlistId of args.playlists) {
-            const playlist = await getPlaylist(playlistId, secrets);
-            tracks.push(...playlist.items.map(i => ({
-                ...i,
-                playlist: playlist.playlist
-            })));
+        // console.log(`Getting info on ${args.playlists.length} playlist(s)...`);
+        for (const playlistUuid of args.playlists) {
+            await addPlaylist(playlistUuid);
         }
     }
 
     if (args.search.length) {
-        console.log(`Getting info on ${args.search.length} search(es)`);
+        // console.log(`Getting info on ${args.search.length} search(es)`);
         for (const query of args.search) {
-            const result = await search(query, 1, secrets).then(i => i.top[0]);
-            if (!result) {
-                console.log(`  No search results for "${query}"`);
-                continue;
-            }
-            console.log(`  Found ${result.type.toLowerCase().substring(0, result.type.length - 1)} "${result.value.title} - ${result.value.artists[0].name}"`);
-            tracks.push(result.value);
+            const result = await search(query, 1).then(i => i.topResults[0]);
+
+            if (result?.type === "track") await addTrack(result.value.id); else
+            if (result?.type === "album") await addAlbum(result.value.id); else
+            if (result?.type === "artist") await addArtist(result.value.id); else
+            console.log(`No search results for "${query}"`);
         }
     }
 
-    console.log(`\nDownloading ${tracks.length} tracks...`);
+    console.log(`Downloading ${queue.length} track(s)...`);
 
-    let quality = args.quality === "low" ? "HIGH" : args.quality === "high" ? "LOSSLESS" : args.quality === "max" ? "HI_RES_LOSSLESS" : config.quality;
+    let quality =
+        args.quality === "low" ? "HIGH" :
+        args.quality === "high" ? "LOSSLESS" :
+        args.quality === "max" ? "HI_RES_LOSSLESS" :
+        config.quality;
 
-    for (const track of tracks) {
-        const formattedTrackDetails = {
-            artist: track.artists[0],
-            album: {
-                ...track.album,
-                artist: track.album.artists?.[0],
-                date: new Date(track.album.releaseDate || track.streamStartDate),
-                year: new Date(track.album.releaseDate || track.streamStartDate).getFullYear()
-            },
+    for (const item of queue) {
+        const details = {
             track: {
-                ...track,
-                trackNumPadded: track.trackNumber.toString().padStart(2, "0")
+                ...item.track,
+                trackNumberPadded: item.track.trackNumber.toString().padStart(2, "0")
             },
-            playlist: track.playlist
+            album: {
+                ...item.album,
+                artist: item.album.artists?.[0],
+                year: new Date(item.album.releaseDate).getFullYear()
+            },
+            artists: item.artists,
+            artist: item.artists[0],
+            // playlist: track.playlist
         };
 
         const unformattedDownloadPath = path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename);
         const { root: downloadPathRoot } = path.parse(unformattedDownloadPath);
-        const downloadPath = `${downloadPathRoot}${unformattedDownloadPath.replace(downloadPathRoot, "").split(path.sep).map(i => formatString(i, formattedTrackDetails).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep)}`;
-        await downloadTrack(formattedTrackDetails, downloadPath, quality);
+        const downloadPath = `${downloadPathRoot}${unformattedDownloadPath.replace(downloadPathRoot, "").split(path.sep).map(i => formatString(i, details).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep)}`;
+        await downloadTrack(details, downloadPath, quality);
     }
 
-    console.log("Done downloading tracks");
+    // console.log("Done downloading tracks");
+
+    async function addTrack(trackId) {
+        const artists = [];
+
+        const track = await findTrack(trackId);
+        const album = await findAlbum(track.album.id);
+        for (const artist of track.artists) artists.push(await findArtist(artist.id));
+        
+        queue.push({
+            track,
+            album,
+            artists
+        });
+
+        console.log(`Found track: ${track.title} - ${track.artists[0].name}\n`);
+    }
+
+    async function addAlbum(albumId) {
+        const tracks = [];
+
+        const album = await findAlbum(albumId);
+        for (const track of album.tracks) tracks.push(await findTrack(track.id));
+
+        for (const track of tracks) {
+            const artists = [];
+
+            for (const artist of track.artists) artists.push(await findArtist(artist.id));
+
+            queue.push({
+                track,
+                album,
+                artists
+            });
+        }
+
+        console.log(`Found album: ${album.title} - ${album.artists[0].name}\n`);
+    }
+
+    async function addArtist(artistId) {
+        const artist = await findArtist(artistId);
+
+        for (const { id: albumId } of artist.albums) {
+            const tracks = [];
+
+            const album = await findAlbum(albumId);
+            for (const track of album.tracks) tracks.push(await findTrack(track.id));
+
+            for (const track of tracks) {
+                const artists = [];
+
+                for (const artist of track.artists) artists.push(await findArtist(artist.id));
+
+                queue.push({
+                    track,
+                    album,
+                    artists
+                });
+            }
+        }
+
+        console.log(`Found artist: ${artist.name} - ${artist.albums.length} albums\n`);
+    }
+
+    async function addPlaylist(playlistUuid) {
+        const playlist = await getPlaylist(playlistUuid);
+            
+        // We don't need to fetch the track here, everything needed seems to be included
+        for (const track of playlist.tracks) {
+            const artists = [];
+
+            const album = await findAlbum(track.album.id);
+            for (const artist of track.artists) artists.push(await findArtist(artist.id));
+
+            queue.push({
+                track,
+                album,
+                artists,
+                playlist
+            });
+        }
+
+        console.log(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks\n`);
+    }
+
+    async function findTrack(trackId) {
+        const foundTrack = tracks.find(track => track.id === trackId);
+        if (foundTrack) {
+            debug(`Found already fetched track: ${trackId}`);
+            return foundTrack;
+        } else {
+            changeLine(`Getting information about track: ${trackId}`);
+            // debug(`Fetching track: ${trackId}`);
+            const track = await getTrack(trackId);
+            tracks.push(track);
+            return track;
+        }
+    }
+
+    async function findAlbum(albumId) {
+        const foundAlbum = albums.find(album => album.id === albumId);
+        if (foundAlbum) {
+            debug(`Found already fetched album: ${albumId}`);
+            return foundAlbum;
+        } else {
+            changeLine(`Getting information about album: ${albumId}`);
+            // debug(`Fetching album: ${albumId}`);
+            const album = await getAlbum(albumId);
+            albums.push(album);
+            return album;
+        }
+    }
+
+    async function findArtist(artistId) {
+        const foundArtist = artists.find(artist => artist.id === artistId);
+        if (foundArtist) {
+            debug(`Found already fetched artist: ${artistId}`);
+            return foundArtist;
+        } else {
+            changeLine(`Getting information about artist: ${artistId}`);
+            // debug(`Fetching artist: ${artistId}`);
+            const artist = await getArtist(artistId);
+            artists.push(artist);
+            return artist;
+        }
+    }
 })();
 
-async function downloadTrack(trackDetails, downloadPath, quality) {
+async function downloadTrack(details, downloadPath, quality) {
     console.log();
     log("Getting playback info...");
-    
+
     let lyrics;
     let buffer;
-    const playbackInfo = await getPlaybackInfo(trackDetails.track.id, secrets, quality);
+    const playbackInfo = await getPlaybackInfo(details.track.id, quality);
     const manifest = parseManifest(Buffer.from(playbackInfo.manifest, "base64").toString(), playbackInfo.manifestMimeType);
     const extension = manifest.codecs === "flac" ? ".flac" : ".m4a"; // TODO: is it safe to assume its AAC if not FLAC?
 
     if (fs.existsSync(`${downloadPath}${extension}`) && !config.overwriteExisting) return log("Already downloaded!");
-    
+
     if (args.lyrics || config.getLyrics) {
         log("Getting lyrics...");
-        lyrics = await getLyrics(trackDetails.track.id, secrets).catch(err => log("Couldn't get lyrics!"));
+        lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics!"));
     }
 
     await new Promise((resolve, reject) => {
@@ -167,43 +276,46 @@ async function downloadTrack(trackDetails, downloadPath, quality) {
     await extractAudioStream(`${downloadPath}.mp4`, `${downloadPath}${extension}`);
     fs.rmSync(`${downloadPath}.mp4`);
 
-    log("Embedding metadata...");
-    const metadata = {
-        title: trackDetails.track.title,
-        artist: trackDetails.artist.name,
-        album: trackDetails.album.title,
-        albumartist: trackDetails.album.artist?.name || trackDetails.artist.name,
-        date: `${trackDetails.album.date.getFullYear()}-${(trackDetails.album.date.getMonth() + 1).toString().padStart(2, "0")}-${trackDetails.album.date.getDate().toString().padStart(2, "0")}`,
-        copyright: trackDetails.track.copyright,
-        originalyear: trackDetails.album.year,
-        tracktotal: trackDetails.album.numberOfTracks,
-        tracknumber: trackDetails.track.trackNumber,
-        disctotal: trackDetails.album.numberOfVolumes,
-        discnumber: trackDetails.track.volumeNumber,
-        replaygain_track_gain: trackDetails.track.replayGain,
-        lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics,
-        ...(config.customMetadata || { })
-    };
-    // console.log(metadata);
-    await embedMetadata(`${downloadPath}${extension}`, metadata).catch(err => {
-        console.log(`Failed to embed metadata!`, err);
-    });
+    if (config.embedMetadata) {
+        log("Embedding metadata...");
+        const metadata = {
+            title: details.track.title,
+            artist: details.artist.name,
+            album: details.album.title,
+            albumartist: details.album.artist?.name || details.artist.name,
+            date: details.releaseDate,
+            copyright: details.track.copyright,
+            originalyear: details.album.year,
+            tracktotal: details.album.trackCount,
+            tracknumber: details.track.trackNumber,
+            disctotal: details.album.volumeCount,
+            discnumber: details.track.volumeNumber,
+            replaygain_track_gain: details.track.replayGain,
+            replaygain_track_peak: details.track.peak,
+            bpm: details.track.bpm,
+            lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics,
+            ...(config.customMetadata || {})
+        };
+        // console.log(metadata);
+        await embedMetadata(`${downloadPath}${extension}`, metadata).catch(err => {
+            log(`Failed to embed metadata: ${err.message}\n`);
+        });
+    }
 
-    log("Done!");
-    
+    log("Completed");
+
     function log(msg) {
-        process.stdout.moveCursor(0, -1);
-        process.stdout.clearLine();
-        process.stdout.write(`Downloading track "${trackDetails.track.title} - ${trackDetails.artist.name}": ${msg}\n`);
+        changeLine(`Downloading track "${details.track.title} - ${details.artist.name}": ${msg}`);
     }
 }
 
 async function authorize() {
     if (secrets.accessToken &&
-        secrets.accessTokenExpiry > Date.now()) return; // Previous token is still valid
+        secrets.accessTokenExpiry > Date.now()) return debug("Token still valid, not refreshing"); // Previous token is still valid
 
     if (secrets.refreshToken && secrets.clientId && secrets.clientSecret) {
         // Refresh token exists
+        debug("Refreshing token");
         await getToken("refresh_token", {
             refreshToken: secrets.refreshToken,
             clientId: secrets.clientId,
@@ -220,8 +332,8 @@ async function authorize() {
         });
     }
 
-    if (!secrets.accessToken ||
-        secrets.accessTokenExpiry <= Date.now()) {
+    if (!secrets.accessToken || secrets.accessTokenExpiry <= Date.now()) {
+        debug("Attempting to authorize with device authorization");
         await authorizeWithDeviceAuthorization({
             clientId: config.clientId,
             clientSecret: config.clientSecret,
@@ -240,7 +352,7 @@ async function authorize() {
         });
     }
 
-    fs.writeFileSync("./secrets.json", JSON.stringify(secrets, null, 4));
+    fs.writeFileSync(config.secretsPath, JSON.stringify(secrets, null, 4));
 }
 
 async function authorizeWithDeviceAuthorization(params = {}) {
@@ -277,3 +389,13 @@ async function authorizeWithDeviceAuthorization(params = {}) {
 
     return token;
 };
+
+function changeLine(msg) {
+    process.stdout.moveCursor(0, -1);
+    process.stdout.clearLine();
+    process.stdout.write(`${msg}\n`);
+}
+
+function debug(...msg) {
+    if (config.debug) console.log(`[DEBUG]`, ...msg);
+}

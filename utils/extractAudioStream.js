@@ -7,6 +7,7 @@ function extractAudioStream(inputPath, outputPath) {
         const ffmpegProcess = child_process.spawn(config.ffmpegPath, [
             "-i", inputPath,
             "-vn",
+            "-map_metadata", "-1",
             "-c:a", "copy",
             outputPath,
             "-y"
@@ -14,6 +15,10 @@ function extractAudioStream(inputPath, outputPath) {
 
         let output = "";
         ffmpegProcess.stderr.on("data", data => output += data);
+
+        ffmpegProcess.on("error", (err) => {
+            return reject(err);
+        });
 
         ffmpegProcess.on("exit", code => {
             if (code) return reject(output);

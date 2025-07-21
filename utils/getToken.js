@@ -1,4 +1,6 @@
-function requestDeviceAuthorization(grantType, params = { }) {
+const { config } = require("../globals");
+
+function getToken(grantType, params = { }) {
     const headers = { };
     const body = new URLSearchParams();
 
@@ -31,7 +33,7 @@ function requestDeviceAuthorization(grantType, params = { }) {
         body.append("client_unique_key", params.clientUniqueKey); // Not needed
     } else throw new Error(`Unknown grant type "${grantType}"`);
 
-    return fetch(`https://auth.tidal.com/v1/oauth2/token`, {
+    return fetch(`${config.authApiBaseUrl}/oauth2/token`, {
         method: "POST",
         headers,
         body
@@ -43,4 +45,4 @@ function requestDeviceAuthorization(grantType, params = { }) {
     });
 }
 
-module.exports = requestDeviceAuthorization;
+module.exports = getToken;

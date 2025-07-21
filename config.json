@@ -1,17 +1,27 @@
 {
     "downloadDirectory": "./Downloads/{{artist.name}}/{{album.title}} ({{album.year}})",
-    "downloadFilename": "{{artist.name}} - {{album.title}} - {{track.title}} - {{track.trackNumPadded}}",
+    "downloadFilename": "{{artist.name}} - {{album.title}} - {{track.title}} - {{track.trackNumberPadded}}",
     "quality": "HI_RES_LOSSLESS",
     "getLyrics": true,
+    "embedMetadata": true,
     "customMetadata": {
         "source": "TIDAL"
     },
     "overwriteExisting": false,
-    "clientId": "1ozX4gKj6qmZu4rg",
-    "clientSecret": "nc0ZouR3w3YSLN1dyvhTUXZE9dRwDdiV1ivFNFhImkE=",
+    "segmentWaitMin": 0,
+    "segmentWaitMax": 0,
+
     "ffmpegPath": "ffmpeg",
     "kid3CliPath": "kid3-cli",
+    "secretsPath": "./secrets.json",
+
+    "debug": false,
+    "clientId": "1ozX4gKj6qmZu4rg",
+    "clientSecret": "nc0ZouR3w3YSLN1dyvhTUXZE9dRwDdiV1ivFNFhImkE=",
     "scope": ["r_usr", "w_usr"],
-    "segmentWaitMin": 50,
-    "segmentWaitMax": 100
+    "apiBaseUrl": "https://openapi.tidal.com/v2",
+    "authApiBaseUrl": "https://auth.tidal.com/v1",
+    "privateApiV1BaseUrl": "https://tidal.com/v1",
+    "privateApiV2BaseUrl": "https://tidal.com/v2",
+    "resourcesBaseUrl": "https://resources.tidal.com"
 }

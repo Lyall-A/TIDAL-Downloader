@@ -1,0 +1,21 @@
+const { config } = require ("../globals");
+
+const parseTrack = require("./parseTrack");
+
+function parsePlaylist(playlist, additional = { }) {
+    return {
+        uuid: playlist.uuid,
+        title: playlist.title,
+        description: playlist.description,
+        duration: playlist.duration,
+        image: `${config.resourcesBaseUrl}/images/${playlist.squareImage.replace(/-/g, "/")}/1080x1080.jpg`,
+        customImage: playlist.customImageUrl,
+        trackCount: playlist.numberOfTracks,
+        sharing: playlist.sharingLevel,
+        created: new Date(playlist.created),
+        lastUpdated: new Date(playlist.lastUpdated),
+        tracks: additional?.items?.filter(({ type }) => type === "track").map(({ item }) => parseTrack(item))
+    };
+}
+
+module.exports = parsePlaylist;

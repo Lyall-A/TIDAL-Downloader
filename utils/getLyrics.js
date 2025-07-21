@@ -1,5 +1,7 @@
-function getLyrics(trackId, secrets) {
-    return fetch(`https://tidal.com/v1/tracks/${trackId}/lyrics?countryCode=${secrets.countryCode}&deviceType=BROWSER`, {
+const { config, secrets } = require("../globals");
+
+function getLyrics(trackId) {
+    return fetch(`${config.privateApiV1BaseUrl}/tracks/${trackId}/lyrics?countryCode=${secrets.countryCode}&deviceType=BROWSER`, {
         headers: {
             "Authorization": `${secrets.tokenType} ${secrets.accessToken}`
         }
