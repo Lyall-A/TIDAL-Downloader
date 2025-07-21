@@ -5,7 +5,7 @@
     "getLyrics": true,
     "embedMetadata": true,
     "customMetadata": {
-        "source": "TIDAL"
+        "comment": "Downloaded from TIDAL"
     },
     "overwriteExisting": false,
     "segmentWaitMin": 0,
