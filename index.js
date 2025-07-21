@@ -82,18 +82,16 @@ const args = parseArgs(process.argv, {
 
     for (const item of queue) {
         const details = {
-            track: {
-                ...item.track,
-                trackNumberPadded: item.track.trackNumber.toString().padStart(2, "0")
-            },
-            album: {
-                ...item.album,
-                artist: item.album.artists?.[0],
-                year: new Date(item.album.releaseDate).getFullYear()
-            },
+            track: item.track,
+            album: item.album,
             artists: item.artists,
+            albumArtists: item.albumArtists,
+            playlist: item.playlist,
+
             artist: item.artists[0],
-            // playlist: track.playlist
+            albumArtist: item.albumArtists[0],
+            trackNumberPadded: item.track.trackNumber.toString().padStart(2, "0"), // TODO: maybe remove this and add a padding function in formatString?
+            albumYear: new Date(item.album.releaseDate).getFullYear()
         };
 
         const unformattedDownloadPath = path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename);
@@ -106,15 +104,18 @@ const args = parseArgs(process.argv, {
 
     async function addTrack(trackId) {
         const artists = [];
+        const albumArtists = [];
 
         const track = await findTrack(trackId);
         const album = await findAlbum(track.album.id);
         for (const artist of track.artists) artists.push(await findArtist(artist.id));
+        for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
         
         queue.push({
             track,
             album,
-            artists
+            artists,
+            albumArtists
         });
 
         console.log(`Found track: ${track.title} - ${track.artists[0].name}\n`);
@@ -128,13 +129,16 @@ const args = parseArgs(process.argv, {
 
         for (const track of tracks) {
             const artists = [];
+            const albumArtists = [];
 
             for (const artist of track.artists) artists.push(await findArtist(artist.id));
+            for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
 
             queue.push({
                 track,
                 album,
-                artists
+                artists,
+                albumArtists
             });
         }
 
@@ -152,13 +156,16 @@ const args = parseArgs(process.argv, {
 
             for (const track of tracks) {
                 const artists = [];
+                const albumArtists = [];
 
                 for (const artist of track.artists) artists.push(await findArtist(artist.id));
+                for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
 
                 queue.push({
                     track,
                     album,
-                    artists
+                    artists,
+                    albumArtists
                 });
             }
         }
@@ -172,14 +179,17 @@ const args = parseArgs(process.argv, {
         // We don't need to fetch the track here, everything needed seems to be included
         for (const track of playlist.tracks) {
             const artists = [];
+            const albumArtists = [];
 
             const album = await findAlbum(track.album.id);
             for (const artist of track.artists) artists.push(await findArtist(artist.id));
+            for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
 
             queue.push({
                 track,
                 album,
                 artists,
+                albumArtists,
                 playlist
             });
         }
@@ -280,9 +290,9 @@ async function downloadTrack(details, downloadPath, quality) {
         log("Embedding metadata...");
         const metadata = {
             title: details.track.title,
-            artist: details.artist.name,
+            artist: details.artist.name, // TODO: add all artists?
             album: details.album.title,
-            albumartist: details.album.artist?.name || details.artist.name,
+            albumartist: details.albumArtist.name, // TODO: add all artists?
             date: details.releaseDate,
             copyright: details.track.copyright,
             originalyear: details.album.year,

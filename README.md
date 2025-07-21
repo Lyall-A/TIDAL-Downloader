@@ -26,6 +26,9 @@
 * [Node.js](https://nodejs.org)
 * [Kid3-cli](https://kid3.kde.org) - Optional. Used to embed metadata
 
+## Warning
+I don't know the risks from doing this. It is possible you can get banned, I'm not sure
+
 ## How TIDAL authenticates a browser
 * Browser sends request to `https://login.tidal.com/api/email/user/existing` containing a client ID, code challenge, redirect URI, scope, login credentials and more
 * Browser sends request to `https://login.tidal.com/success` which redirects to `https://tidal.com/login/auth`, containing the code
