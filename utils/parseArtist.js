@@ -6,7 +6,7 @@ function parseArtist(artist, additional = { }) {
     return {
         id: artist.id,
         name: artist.name,
-        picture: artist.picture && `${config.resourcesBaseUrl}/images/${artist.picture.replace(/-/g, "/")}/750x750.jpg` || undefined,
+        picture: artist.picture && `${config.resourcesBaseUrl}/images/${artist.picture.replace(/-/g, "/")}/origin.jpg` || undefined,
         types: artist.artistTypes,
         roles: artist.artistRoles?.map(role => ({
             id: role.categoryId,

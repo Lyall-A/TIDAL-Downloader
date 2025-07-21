@@ -14,7 +14,7 @@ function parseAlbum(album, additional = { }) {
         releaseDate: album.releaseDate,
         copyright: album.copyright,
         explicit: album.explicit,
-        cover: `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, "/")}/1280x1280.jpg`,
+        cover: `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, "/")}/origin.jpg`,
         quality: album.audioQuality,
         modes: album.audioModes,
         qualityTypes: album.mediaMetadata?.tags,
