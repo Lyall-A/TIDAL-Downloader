@@ -8,7 +8,7 @@ function parsePlaylist(playlist, additional = { }) {
         title: playlist.title,
         description: playlist.description,
         duration: playlist.duration,
-        image: `${config.resourcesBaseUrl}/images/${playlist.squareImage.replace(/-/g, "/")}/1080x1080.jpg`,
+        image: `${config.resourcesBaseUrl}/images/${playlist.squareImage.replace(/-/g, "/")}/origin.jpg`,
         customImage: playlist.customImageUrl,
         trackCount: playlist.numberOfTracks,
         sharing: playlist.sharingLevel,
