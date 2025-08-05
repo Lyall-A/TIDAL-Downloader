@@ -13,7 +13,7 @@ const search = require("./utils/search");
 const parseManifest = require("./utils/parseManifest");
 const extractAudioStream = require("./utils/extractAudioStream");
 const parseArgs = require("./utils/parseArgs");
-const formatString = require("./utils/formatString");
+const formatPath = require("./utils/formatPath");
 const embedMetadata = require("./utils/embedMetadata");
 
 const { config, secrets } = require("./globals");
@@ -94,9 +94,7 @@ const args = parseArgs(process.argv, {
             albumYear: new Date(item.album.releaseDate).getFullYear()
         };
 
-        const unformattedDownloadPath = path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename);
-        const { root: downloadPathRoot } = path.parse(unformattedDownloadPath);
-        const downloadPath = `${downloadPathRoot}${unformattedDownloadPath.replace(downloadPathRoot, "").split(path.sep).map(i => formatString(i, details).replace(/\/|\\|\?|\*|\:|\||\"|\<|\>/g, "")).join(path.sep)}`;
+        const downloadPath = formatPath(path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename), details);
         await downloadTrack(details, downloadPath, quality);
     }
 
@@ -244,19 +242,22 @@ async function downloadTrack(details, downloadPath, quality) {
     console.log();
     log("Getting playback info...");
 
-    let lyrics;
-    let buffer;
+    const coverPath = `${config.coverFilename ? formatPath(path.resolve(path.dirname(downloadPath), config.coverFilename), details) : downloadPath}.jpg`;
     const playbackInfo = await getPlaybackInfo(details.track.id, quality);
     const manifest = parseManifest(Buffer.from(playbackInfo.manifest, "base64").toString(), playbackInfo.manifestMimeType);
-    const extension = manifest.codecs === "flac" ? ".flac" : ".m4a"; // TODO: is it safe to assume its AAC if not FLAC?
+    const trackPath = `${downloadPath}${manifest.codecs === "flac" ? ".flac" : ".m4a"}`; // TODO: is it safe to assume AAC if not FLAC?
+    let coverExists = fs.existsSync(coverPath);
+    let lyrics;
+    let trackBuffer;
 
-    if (fs.existsSync(`${downloadPath}${extension}`) && !config.overwriteExisting) return log("Already downloaded!");
+    if (fs.existsSync(trackPath) && !config.overwriteExisting) return log("Already downloaded!");
 
     if (args.lyrics || config.getLyrics) {
         log("Getting lyrics...");
         lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics!"));
     }
 
+    // Download all segments
     await new Promise((resolve, reject) => {
         (function downloadSegment(segmentIndex) {
             const segment = manifest.segments[segmentIndex];
@@ -265,10 +266,10 @@ async function downloadTrack(details, downloadPath, quality) {
                 // TODO: error
                 const segmentArrayBuffer = await res.arrayBuffer();
 
-                if (buffer) {
-                    buffer = Buffer.concat([buffer, Buffer.from(segmentArrayBuffer)]);
+                if (trackBuffer) {
+                    trackBuffer = Buffer.concat([trackBuffer, Buffer.from(segmentArrayBuffer)]);
                 } else {
-                    buffer = Buffer.from(segmentArrayBuffer);
+                    trackBuffer = Buffer.from(segmentArrayBuffer);
                 }
 
                 if (manifest.segments[++segmentIndex]) {
@@ -280,36 +281,58 @@ async function downloadTrack(details, downloadPath, quality) {
         })(0);
     });
 
-    log(`Saving as ${extension}...`);
+    // Save and extract audio from MP4
+    log(`Saving as ${path.extname(trackPath)}...`);
     fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
-    fs.writeFileSync(`${downloadPath}.mp4`, buffer);
-    await extractAudioStream(`${downloadPath}.mp4`, `${downloadPath}${extension}`);
+    fs.writeFileSync(`${downloadPath}.mp4`, trackBuffer);
+    await extractAudioStream(`${downloadPath}.mp4`, trackPath);
     fs.rmSync(`${downloadPath}.mp4`);
 
     if (config.embedMetadata) {
+        // Download cover
+        if (details.album.cover && !fs.existsSync(coverPath)) {
+            log("Downloading cover...");
+            await fetch(details.album.cover).then(async res => {
+                if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
+                const coverBuffer = Buffer.from(await res.arrayBuffer());
+                fs.writeFileSync(coverPath, coverBuffer);
+                coverExists = true;
+            }).catch(err => {
+                log(`Failed to download cover: ${err.message}\n`);
+            });
+        }
+
         log("Embedding metadata...");
-        const metadata = {
-            title: details.track.title,
-            artist: details.artist.name, // TODO: add all artists?
-            album: details.album.title,
-            albumartist: details.albumArtist.name, // TODO: add all artists?
-            date: details.album.releaseDate,
-            copyright: details.track.copyright,
-            originalyear: details.albumYear,
-            tracktotal: details.album.trackCount,
-            tracknumber: details.track.trackNumber,
-            disctotal: details.album.volumeCount,
-            discnumber: details.track.volumeNumber,
-            replaygain_track_gain: details.track.replayGain,
-            replaygain_track_peak: details.track.peak,
-            bpm: details.track.bpm,
-            lyrics: lyrics?.syncedLyrics || lyrics?.plainLyrics,
-            ...(config.customMetadata || {})
-        };
+        const metadata = [
+            ["title", details.track.title],
+            ["artist", config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
+            ["album", details.album.title],
+            ["albumartist", config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
+            ["date", details.album.releaseDate],
+            ["copyright", details.track.copyright],
+            ["originalyear", details.albumYear],
+            ["tracktotal", details.album.trackCount],
+            ["tracknumber", details.track.trackNumber],
+            ["disctotal", details.album.volumeCount],
+            ["discnumber", details.track.volumeNumber],
+            ["replaygain_track_gain", details.track.replayGain],
+            ["replaygain_track_peak", details.track.peak],
+            ["bpm", details.track.bpm],
+            ["lyrics", lyrics?.syncedLyrics || lyrics?.plainLyrics],
+            ["picture", coverExists ? coverPath : null, true],
+            ...(config.customMetadata || [])
+        ];
         // console.log(metadata);
-        await embedMetadata(`${downloadPath}${extension}`, metadata).catch(err => {
+        
+        // Embed metadata
+        await embedMetadata(trackPath, metadata).catch(err => {
             log(`Failed to embed metadata: ${err.message}\n`);
         });
+
+        // Delete cover art if coverFilename not set
+        if (coverExists && !config.coverFilename) {
+            fs.rmSync(coverPath);
+        }
     }
 
     log("Completed");

@@ -2,13 +2,16 @@ const child_process = require("child_process");
 
 const config = require("../config.json");
 
-function embedMetadata(file, metadata) {
+function embedMetadata(file, tags) {
     return new Promise((resolve, reject) => {
         const kid3CliProcess = child_process.spawn(config.kid3CliPath, [
-            ...Object.entries(metadata).filter(i => i[1] !== undefined && i[1] !== null).map(([key, value]) => [
-                "-c",
-                `set "${key.toString().replace(/"/g, i => `\\${i}`)}" "${value.toString().replace(/"/g, i => `\\${i}`)}"`
-            ]).flat(),
+            ...tags.filter(i => i[1] !== undefined && i[1] !== null).map(([tag, value, isFile]) => {
+                if (isFile) {
+                    return ["-c", `set "${escapeQuotes(tag)}":"${escapeQuotes(value)}" ""`];
+                } else {
+                    return ["-c", `set "${escapeQuotes(tag)}" "${escapeQuotes(value)}"`];
+                }
+            }).flat(),
             file
         ]);
 
@@ -23,6 +26,10 @@ function embedMetadata(file, metadata) {
             return resolve();
         });
     });
+};
+
+function escapeQuotes(input) {
+    return input.toString().replace(/"/g, i => `\\${i}`);
 }
 
 module.exports = embedMetadata;

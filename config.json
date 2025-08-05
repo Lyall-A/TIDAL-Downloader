@@ -4,9 +4,11 @@
     "quality": "HI_RES_LOSSLESS",
     "getLyrics": true,
     "embedMetadata": true,
-    "customMetadata": {
-        "comment": "Downloaded from TIDAL"
-    },
+    "artistSeperator": "; ",
+    "coverFilename": "cover",
+    "customMetadata": [
+        ["comment", "Downloaded from TIDAL"]
+    ],
     "overwriteExisting": false,
     "segmentWaitMin": 0,
     "segmentWaitMax": 0,

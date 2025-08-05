@@ -20,7 +20,14 @@
 ### --lyrics yes
 * Embed lyrics to metadata, uses value from `config.json` if not provided
 
-<small>please do not sue me</small>
+## Configuration
+`artistSeperator` can be set to null to use only main artist.
+
+`coverFilename` can be set to null to delete jpg after embedding.
+
+`segmentWaitMin` and `segmentWaitMax` adds a delay between downloading segments, can maybe reduce ban or rate limit risk (if there is one).
+
+Figure the rest out :)
 
 ## Dependencies
 * [Node.js](https://nodejs.org)
@@ -37,3 +44,5 @@ I don't know the risks from doing this. It is possible you can get banned, I'm n
 ## How TIDAL authenticates a Android TV (a "Limited Input Device")
 * App sends request to `https://auth.tidal.com/v1/oauth2/device_authorization` containing client ID and scope. Response contains a device code, user code, how long the user code is valid for and a interval for requesting the token
 * App periodically requests a token using the `urn:ietf:params:oauth:grant-type:device_code` grant type to verify sign in, request contains client ID, client secret, the device code from earlier and more
+
+<small>please do not sue me</small>
