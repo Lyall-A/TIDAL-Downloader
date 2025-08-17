@@ -21,6 +21,8 @@
 * Embed lyrics to metadata, uses value from `config.json` if not provided
 
 ## Configuration
+`allowUserUploads` can be set to allow/block user uploaded tracks
+
 `artistSeperator` can be set to null to use only main artist.
 
 `coverFilename` can be set to null to delete jpg after embedding.

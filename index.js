@@ -19,7 +19,7 @@ const embedMetadata = require("./utils/embedMetadata");
 const { config, secrets } = require("./globals");
 
 const args = parseArgs(process.argv, {
-
+    // TODO: make args good
 });
 
 (async () => {
@@ -33,42 +33,38 @@ const args = parseArgs(process.argv, {
     const queue = []; // Tracks to be downloaded
 
     if (args.tracks.length) {
-        // console.log(`Getting info on ${args.tracks.length} track(s)...`);
         for (const trackId of args.tracks) {
             await addTrack(trackId);
         }
     }
 
     if (args.albums.length) {
-        // console.log(`Getting info on ${args.albums.length} album(s)...`);
         for (const albumId of args.albums) {
             await addAlbum(albumId);
         }
     }
 
     if (args.artists.length) {
-        // console.log(`Getting info on ${args.artists.length} artist(s)...`);
         for (const artistId of args.artists) {
             await addArtist(artistId);
         }
     }
 
     if (args.playlists.length) {
-        // console.log(`Getting info on ${args.playlists.length} playlist(s)...`);
         for (const playlistUuid of args.playlists) {
             await addPlaylist(playlistUuid);
         }
     }
 
     if (args.search.length) {
-        // console.log(`Getting info on ${args.search.length} search(es)`);
         for (const query of args.search) {
-            const result = await search(query, 1).then(i => i.topResults[0]);
+            changeLine(`Searching for: ${query}`);
 
+            const result = await search(query, 1).then(i => i.topResults[0]);
             if (result?.type === "track") await addTrack(result.value.id); else
-            if (result?.type === "album") await addAlbum(result.value.id); else
-            if (result?.type === "artist") await addArtist(result.value.id); else
-            console.log(`No search results for "${query}"`);
+                if (result?.type === "album") await addAlbum(result.value.id); else
+                    if (result?.type === "artist") await addArtist(result.value.id); else
+                        console.log(`No search results for "${query}"\n`);
         }
     }
 
@@ -76,9 +72,9 @@ const args = parseArgs(process.argv, {
 
     let quality =
         args.quality === "low" ? "HIGH" :
-        args.quality === "high" ? "LOSSLESS" :
-        args.quality === "max" ? "HI_RES_LOSSLESS" :
-        config.quality;
+            args.quality === "high" ? "LOSSLESS" :
+                args.quality === "max" ? "HI_RES_LOSSLESS" :
+                    config.quality;
 
     for (const item of queue) {
         const details = {
@@ -104,31 +100,12 @@ const args = parseArgs(process.argv, {
         const artists = [];
         const albumArtists = [];
 
-        const track = await findTrack(trackId);
-        const album = await findAlbum(track.album.id);
-        for (const artist of track.artists) artists.push(await findArtist(artist.id));
-        for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
-        
-        queue.push({
-            track,
-            album,
-            artists,
-            albumArtists
-        });
+        try {
+            const track = await findTrack(trackId);
 
-        console.log(`Found track: ${track.title} - ${track.artists[0].name}\n`);
-    }
+            if (track.upload && !config.allowUserUploads) throw new Error();
 
-    async function addAlbum(albumId) {
-        const tracks = [];
-
-        const album = await findAlbum(albumId);
-        for (const track of album.tracks) tracks.push(await findTrack(track.id));
-
-        for (const track of tracks) {
-            const artists = [];
-            const albumArtists = [];
-
+            const album = await findAlbum(track.album.id);
             for (const artist of track.artists) artists.push(await findArtist(artist.id));
             for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
 
@@ -138,17 +115,17 @@ const args = parseArgs(process.argv, {
                 artists,
                 albumArtists
             });
-        }
 
-        console.log(`Found album: ${album.title} - ${album.artists[0].name}\n`);
+            console.log(`Found track: ${track.title} - ${track.artists[0].name}\n`);
+        } catch (err) {
+            console.log(`Could not find track: ${trackId}\n`);
+        }
     }
 
-    async function addArtist(artistId) {
-        const artist = await findArtist(artistId);
+    async function addAlbum(albumId) {
+        const tracks = [];
 
-        for (const { id: albumId } of artist.albums) {
-            const tracks = [];
-
+        try {
             const album = await findAlbum(albumId);
             for (const track of album.tracks) tracks.push(await findTrack(track.id));
 
@@ -166,33 +143,71 @@ const args = parseArgs(process.argv, {
                     albumArtists
                 });
             }
-        }
 
-        console.log(`Found artist: ${artist.name} - ${artist.albums.length} albums\n`);
+            console.log(`Found album: ${album.title} - ${album.artists[0].name}\n`);
+        } catch (err) {
+            console.log(`Could not find album: ${albumId}\n`);
+        }
+    }
+
+    async function addArtist(artistId) {
+        try {
+            const artist = await findArtist(artistId);
+
+            for (const { id: albumId } of artist.albums) {
+                const tracks = [];
+
+                const album = await findAlbum(albumId);
+                for (const track of album.tracks) tracks.push(await findTrack(track.id));
+
+                for (const track of tracks) {
+                    const artists = [];
+                    const albumArtists = [];
+
+                    for (const artist of track.artists) artists.push(await findArtist(artist.id));
+                    for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
+
+                    queue.push({
+                        track,
+                        album,
+                        artists,
+                        albumArtists
+                    });
+                }
+            }
+
+            console.log(`Found artist: ${artist.name} - ${artist.albums.length} albums\n`);
+        } catch (err) {
+            console.log(`Could not find artist: ${artistId}\n`);
+        }
     }
 
     async function addPlaylist(playlistUuid) {
-        const playlist = await getPlaylist(playlistUuid);
-            
-        // We don't need to fetch the track here, everything needed seems to be included
-        for (const track of playlist.tracks) {
-            const artists = [];
-            const albumArtists = [];
+        try {
+            const playlist = await getPlaylist(playlistUuid);
 
-            const album = await findAlbum(track.album.id);
-            for (const artist of track.artists) artists.push(await findArtist(artist.id));
-            for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
+            // We don't need to fetch the track here, everything needed seems to be included
+            for (const track of playlist.tracks) {
+                const artists = [];
+                const albumArtists = [];
 
-            queue.push({
-                track,
-                album,
-                artists,
-                albumArtists,
-                playlist
-            });
+                const album = await findAlbum(track.album.id);
+                for (const artist of track.artists) artists.push(await findArtist(artist.id));
+                for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
+
+                queue.push({
+                    track,
+                    album,
+                    artists,
+                    albumArtists,
+                    playlist
+                });
+            }
+
+            console.log(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks\n`);
+        } catch (err) {
+            console.log(`Could not find playlist: ${playlistUuid}`);
         }
-
-        console.log(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks\n`);
     }
 
     async function findTrack(trackId) {
@@ -323,7 +338,7 @@ async function downloadTrack(details, downloadPath, quality) {
             ...(config.customMetadata || [])
         ];
         // console.log(metadata);
-        
+
         // Embed metadata
         await embedMetadata(trackPath, metadata).catch(err => {
             log(`Failed to embed metadata: ${err.message}\n`);

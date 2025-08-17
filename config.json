@@ -5,6 +5,7 @@
     "getLyrics": true,
     "embedMetadata": true,
     "artistSeperator": "; ",
+    "allowUserUploads": false,
     "coverFilename": "cover",
     "customMetadata": [
         ["comment", "Downloaded from TIDAL"]

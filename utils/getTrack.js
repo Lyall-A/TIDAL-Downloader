@@ -1,13 +1,9 @@
-const { config, secrets } = require("../globals");
+const tidalApi = require("./tidalApi");
 
 function getTrack(trackId) {
     const parseTrack = require("./parseTrack");
 
-    return fetch(`${config.privateApiV1BaseUrl}/tracks/${trackId}?countryCode=${secrets.countryCode}&deviceType=BROWSER`, {
-        headers: {
-            "Authorization": `${secrets.tokenType} ${secrets.accessToken}`
-        }
-    }).then(res => res.json()).then(parseTrack);
+    return tidalApi("privatev1", `/tracks/${trackId}`).then(({ json }) => parseTrack(json));
 }
 
 module.exports = getTrack;

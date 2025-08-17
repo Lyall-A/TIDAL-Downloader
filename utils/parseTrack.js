@@ -6,6 +6,7 @@ function parseTrack(track) {
         id: track.id,
         title: track.title,
         duration: track.duration,
+        upload: track.upload,
         copyright: track.copyright,
         explicit: track.explicit,
         quality: track.audioQuality,

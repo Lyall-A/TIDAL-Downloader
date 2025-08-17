@@ -1,11 +1,13 @@
-const { config, secrets } = require("../globals");
+const tidalApi = require("./tidalApi");
 
 function getPlaybackInfo(trackId, audioQuality = "HI_RES_LOSSLESS", playbackMode = "STREAM", assetPresentation = "FULL") {
-    return fetch(`${config.privateApiV1BaseUrl}/tracks/${trackId}/playbackinfo?audioquality=${audioQuality}&playbackmode=${playbackMode}&assetpresentation=${assetPresentation}`, {
-        headers: {
-            "Authorization": `${secrets.tokenType} ${secrets.accessToken}`
+    return tidalApi("privatev1", `/tracks/${trackId}/playbackinfo`, {
+        query: {
+            audioquality: audioQuality,
+            playbackmode: playbackMode,
+            assetpresentation: assetPresentation
         }
-    }).then(res => res.json());
+    }).then(res => res.json);
 }
 
 module.exports = getPlaybackInfo;
