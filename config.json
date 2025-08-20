@@ -8,7 +8,7 @@
     "allowUserUploads": false,
     "coverFilename": "cover",
     "customMetadata": [
-        ["comment", "Downloaded from TIDAL"]
+        ["comment", "Downloaded from TIDAL: {{album.url}}"]
     ],
     "overwriteExisting": false,
     "segmentWaitMin": 0,

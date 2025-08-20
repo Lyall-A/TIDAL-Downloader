@@ -21,6 +21,7 @@ function parseAlbum(album, additional = { }) {
         qualityTypes: album.mediaMetadata?.tags,
         credits: additional?.credits?.items,
         review: additional?.review,
+        url: album.url,
         artists: album.artists?.map(parseArtist),
         tracks: additional?.tracks?.map(parseTrack),
     };

@@ -14,6 +14,7 @@ const parseManifest = require("./utils/parseManifest");
 const extractAudioStream = require("./utils/extractAudioStream");
 const parseArgs = require("./utils/parseArgs");
 const formatPath = require("./utils/formatPath");
+const formatString = require("./utils/formatString");
 const embedMetadata = require("./utils/embedMetadata");
 
 const { config, secrets } = require("./globals");
@@ -335,7 +336,7 @@ async function downloadTrack(details, downloadPath, quality) {
             ["bpm", details.track.bpm],
             ["lyrics", lyrics?.syncedLyrics || lyrics?.plainLyrics],
             ["picture", coverExists ? coverPath : null, true],
-            ...(config.customMetadata || [])
+            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
         ];
         // console.log(metadata);
 
