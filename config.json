@@ -8,14 +8,18 @@
     "allowUserUploads": false,
     "coverFilename": "cover",
     "customMetadata": [
-        ["comment", "Downloaded from TIDAL: {{album.url}}"]
+        ["comment", "Downloaded from TIDAL: {{album.url}}"],
+        ["tidal_albumid", "{{album.id}}"],
+        ["tidal_albumartistid", "{{albumArtist.id}}"],
+        ["tidal_trackid", "{{track.id}}"],
+        ["tidal_artistid", "{{artist.id}}"]
     ],
     "overwriteExisting": false,
     "segmentWaitMin": 0,
     "segmentWaitMax": 0,
 
     "ffmpegPath": "ffmpeg",
-    "kid3CliPath": "kid3-cli",
+    "kid3CliPath": "./bin/kid3/kid3-cli",
     "secretsPath": "./secrets.json",
 
     "debug": false,
