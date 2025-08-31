@@ -19,7 +19,7 @@
     "segmentWaitMax": 0,
 
     "ffmpegPath": "ffmpeg",
-    "kid3CliPath": "./bin/kid3/kid3-cli",
+    "kid3CliPath": "kid3-cli",
     "secretsPath": "./secrets.json",
 
     "debug": false,
