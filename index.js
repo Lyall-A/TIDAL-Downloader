@@ -47,6 +47,7 @@ const userOptions = {
 
 if (userOptions.help) {
     // TODO: help menu
+    return;
 }
 
 (async () => {
