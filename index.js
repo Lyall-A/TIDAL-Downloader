@@ -12,16 +12,42 @@ const getPlaylist = require("./utils/getPlaylist");
 const search = require("./utils/search");
 const parseManifest = require("./utils/parseManifest");
 const extractAudioStream = require("./utils/extractAudioStream");
-const parseArgs = require("./utils/parseArgs");
+const Args = require("./utils/Args");
 const formatPath = require("./utils/formatPath");
 const formatString = require("./utils/formatString");
 const embedMetadata = require("./utils/embedMetadata");
 
 const { config, secrets } = require("./globals");
 
-const args = parseArgs(process.argv, {
-    // TODO: make args good
-});
+const args = new Args(process.argv, [
+    { name: 'help', shortName: 'h', noValue: true },
+    { name: 'track', shortName: 't', type: 'int' },
+    { name: 'artist', shortName: 'a', type: 'int' },
+    { name: 'album', shortName: 'm', type: 'int' },
+    { name: 'playlist', shortName: 'p' },
+    { name: 'search', shortName: 's' },
+    { name: 'quality', shortName: 'q' },
+    { name: 'directory', shortName: 'd' },
+    { name: 'filename', shortName: 'f' },
+    { name: 'lyrics', shortName: 'l', type: 'bool' },
+]);
+
+const userOptions = {
+    help: args.get('help'),
+    tracks: args.getAll('track'),
+    artists: args.getAll('artist'),
+    albums: args.getAll('album'),
+    playlists: args.getAll('album'),
+    searches: args.getAll('search'),
+    quality: args.get('quality') ?? config.quality,
+    directory: args.get('directory') ?? config.downloadDirectory,
+    filename: args.get('filename') ?? config.downloadFilename,
+    lyrics: args.get('lyrics') ?? config.getLyrics,
+};
+
+if (userOptions.help) {
+    // TODO: help menu
+}
 
 (async () => {
     console.log("Authorizing...");
@@ -33,32 +59,32 @@ const args = parseArgs(process.argv, {
 
     const queue = []; // Tracks to be downloaded
 
-    if (args.tracks.length) {
-        for (const trackId of args.tracks) {
+    if (userOptions.tracks.length) {
+        for (const trackId of userOptions.tracks) {
             await addTrack(trackId);
         }
     }
 
-    if (args.albums.length) {
-        for (const albumId of args.albums) {
+    if (userOptions.albums.length) {
+        for (const albumId of userOptions.albums) {
             await addAlbum(albumId);
         }
     }
 
-    if (args.artists.length) {
-        for (const artistId of args.artists) {
+    if (userOptions.artists.length) {
+        for (const artistId of userOptions.artists) {
             await addArtist(artistId);
         }
     }
 
-    if (args.playlists.length) {
-        for (const playlistUuid of args.playlists) {
+    if (userOptions.playlists.length) {
+        for (const playlistUuid of userOptions.playlists) {
             await addPlaylist(playlistUuid);
         }
     }
 
-    if (args.search.length) {
-        for (const query of args.search) {
+    if (userOptions.searches.length) {
+        for (const query of userOptions.searches) {
             changeLine(`Searching for: ${query}`);
 
             const result = await search(query, 1).then(i => i.topResults[0]);
@@ -72,10 +98,10 @@ const args = parseArgs(process.argv, {
     console.log(`Downloading ${queue.length} track(s)...`);
 
     let quality =
-        args.quality === "low" ? "HIGH" :
-            args.quality === "high" ? "LOSSLESS" :
-                args.quality === "max" ? "HI_RES_LOSSLESS" :
-                    config.quality;
+        userOptions.quality === "low" ? "HIGH" :
+        userOptions.quality === "high" ? "LOSSLESS" :
+        userOptions.quality === "max" ? "HI_RES_LOSSLESS" :
+        userOptions.quality;
 
     for (const item of queue) {
         const details = {
@@ -91,7 +117,7 @@ const args = parseArgs(process.argv, {
             albumYear: new Date(item.album.releaseDate).getFullYear()
         };
 
-        const downloadPath = formatPath(path.resolve(args.directory || config.downloadDirectory, args.filename || config.downloadFilename), details);
+        const downloadPath = formatPath(path.resolve(userOptions.directory, userOptions.filename), details);
         await downloadTrack(details, downloadPath, quality);
     }
 
@@ -268,7 +294,7 @@ async function downloadTrack(details, downloadPath, quality) {
 
     if (fs.existsSync(trackPath) && !config.overwriteExisting) return log("Already downloaded!");
 
-    if (args.lyrics || config.getLyrics) {
+    if (userOptions.lyrics) {
         log("Getting lyrics...");
         lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics!"));
     }
@@ -360,7 +386,7 @@ async function downloadTrack(details, downloadPath, quality) {
 
 async function authorize() {
     if (secrets.accessToken &&
-        secrets.accessTokenExpiry > Date.now()) return debug("Token still valid, not refreshing"); // Previous token is still valid
+        secrets.accessTokenExpiry > Date.now()) return debug("Token still valid, not refreshing\n"); // Previous token is still valid
 
     if (secrets.refreshToken && secrets.clientId && secrets.clientSecret) {
         // Refresh token exists

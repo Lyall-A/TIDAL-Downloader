@@ -1,4 +1,5 @@
-* Make good args parsing function
+* ~~Make good args parsing function~~
+* help menu and readable readme
 * Allow searching for track, album or artist instead of just top results
 * add good error handling (when track not found, etc)
 * refactor adding/finding

@@ -1,24 +1,15 @@
 # TIDAL Downloader
 
 ## Arguments
-### --track \<id>
-* Download a single track
-### --album \<id>
-* Download all tracks from an album
-### --artist \<id>
-* Download all tracks from an artist
-### --playlist \<id>
-* Download all tracks from a playlist
-### --search \<query>
-* Download a album/artist/playlist from a search result
-### --quality <low|high|max>
-* Set download quality, uses value from `config.json` if not provided
-### --directory <path>
-* Set download directory, supports formatting, uses value from `config.json` if not provided
-### --filename <filename>
-* Set download filename, supports formatting, uses value from `config.json` if not provided
-### --lyrics yes
-* Embed lyrics to metadata, uses value from `config.json` if not provided
+* `--track <id>`, `-t`: Download single track
+* `--album <id>`, `-m`: Download single album
+* `--artist <id>`, `-a`: Download artist's discography
+* `--playlist <uuid>`, `-p`: Download playlist
+* `--search <query>`, `-s`: Download first search result
+* `--quality <low|high|max>`, `-q`: Set download quality, defaults to `quality` in config
+* `--directory <path>`, `-d`: Set download directory, supports formatting, defaults to `downloadDirectory` in config
+* `--filename <filename>`, `-f`: Set download filename, supports formatting, defaults to `downloadFilename` in config
+* `--lyrics <yes|no>`, `-l`: Sets if lyrics should be embedded or not, defaults to `getLyrics` in config
 
 ## Configuration
 `allowUserUploads` can be set to allow/block user uploaded tracks
