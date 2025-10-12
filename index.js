@@ -19,35 +19,57 @@ const embedMetadata = require("./utils/embedMetadata");
 
 const { config, secrets } = require("./globals");
 
-const args = new Args(process.argv, [
-    { name: 'help', shortName: 'h', noValue: true },
-    { name: 'track', shortName: 't', type: 'int' },
-    { name: 'artist', shortName: 'a', type: 'int' },
-    { name: 'album', shortName: 'm', type: 'int' },
-    { name: 'playlist', shortName: 'p' },
-    { name: 'search', shortName: 's' },
-    { name: 'quality', shortName: 'q' },
-    { name: 'directory', shortName: 'd' },
-    { name: 'filename', shortName: 'f' },
-    { name: 'lyrics', shortName: 'l', type: 'bool' },
-]);
+const argOptions = [
+    { name: 'help', shortName: 'h', noValue: true, description: 'Displays this menu' },
+    { name: 'track', shortName: 't', type: 'int', description: 'Downloads track', valueDescription: 'track-id' },
+    { name: 'album', shortName: 'm', type: 'int', description: 'Downloads album', valueDescription: 'album-id' },
+    { name: 'artist', shortName: 'a', type: 'int', description: 'Downloads artist discography', valueDescription: 'artist-id' },
+    { name: 'playlist', shortName: 'p', description: 'Downloads playlist items', valueDescription: 'playlist-uuid' },
+    { name: 'search', shortName: 's', description: 'Downloads top search result', valueDescription: 'query' },
+    // { name: 'search-track', shortName: 'st' },
+    // { name: 'search-album', shortName: 'sm' },
+    // { name: 'search-artist', shortName: 'sa' },
+    // { name: 'search-playlist', shortName: 'sp' },
+    { name: 'quality', shortName: 'q', description: 'Sets download quality', valueDescription: 'low|high|max' },
+    { name: 'directory', shortName: 'd', description: 'Sets directory path (supports formatting)', valueDescription: 'directory' },
+    { name: 'filename', shortName: 'f', description: 'Sets filename (supports formatting)', valueDescription: 'filename' },
+    { name: 'lyrics', shortName: 'l', type: 'bool', description: 'Enables or disables lyrics embedding', valueDescription: 'yes|no' },
+];
+const args = new Args(process.argv, argOptions);
 
-const userOptions = {
+const options = {
     help: args.get('help'),
     tracks: args.getAll('track'),
     artists: args.getAll('artist'),
     albums: args.getAll('album'),
     playlists: args.getAll('album'),
     searches: args.getAll('search'),
+    // trackSearches: args.getAll('search-track'),
+    // artistSearches: args.getAll('search-artist'),
+    // albumSearches: args.getAll('search-album'),
+    // playlistSearches: args.getAll('search-playlist'),
     quality: args.get('quality') ?? config.quality,
     directory: args.get('directory') ?? config.downloadDirectory,
     filename: args.get('filename') ?? config.downloadFilename,
     lyrics: args.get('lyrics') ?? config.getLyrics,
 };
 
-if (userOptions.help) {
-    // TODO: help menu
-    return;
+if (options.help) {
+    // oh boy 
+    return console.log(`
+Usage:
+  ${process.argv0}${path.dirname(process.execPath) === process.cwd() ? '' : ' .'} [options...]
+Options:
+  ${argOptions.map(arg => `${
+    `${[
+        arg.name ? `--${arg.name}` : null, 
+        arg.shortName ? `-${arg.shortName}` : null
+    ]
+    .filter(i => i)
+    .join(', ')}\
+${arg.valueDescription ? ` <${arg.valueDescription}>` : ''}`.padEnd(40 - 1, ' ')} \
+${arg.description || 'No description...'}`).join('\n  ')}
+`.trim());
 }
 
 (async () => {
@@ -60,32 +82,32 @@ if (userOptions.help) {
 
     const queue = []; // Tracks to be downloaded
 
-    if (userOptions.tracks.length) {
-        for (const trackId of userOptions.tracks) {
+    if (options.tracks.length) {
+        for (const trackId of options.tracks) {
             await addTrack(trackId);
         }
     }
 
-    if (userOptions.albums.length) {
-        for (const albumId of userOptions.albums) {
+    if (options.albums.length) {
+        for (const albumId of options.albums) {
             await addAlbum(albumId);
         }
     }
 
-    if (userOptions.artists.length) {
-        for (const artistId of userOptions.artists) {
+    if (options.artists.length) {
+        for (const artistId of options.artists) {
             await addArtist(artistId);
         }
     }
 
-    if (userOptions.playlists.length) {
-        for (const playlistUuid of userOptions.playlists) {
+    if (options.playlists.length) {
+        for (const playlistUuid of options.playlists) {
             await addPlaylist(playlistUuid);
         }
     }
 
-    if (userOptions.searches.length) {
-        for (const query of userOptions.searches) {
+    if (options.searches.length) {
+        for (const query of options.searches) {
             changeLine(`Searching for: ${query}`);
 
             const result = await search(query, 1).then(i => i.topResults[0]);
@@ -99,10 +121,10 @@ if (userOptions.help) {
     console.log(`Downloading ${queue.length} track(s)...`);
 
     let quality =
-        userOptions.quality === "low" ? "HIGH" :
-        userOptions.quality === "high" ? "LOSSLESS" :
-        userOptions.quality === "max" ? "HI_RES_LOSSLESS" :
-        userOptions.quality;
+        options.quality === "low" ? "HIGH" :
+        options.quality === "high" ? "LOSSLESS" :
+        options.quality === "max" ? "HI_RES_LOSSLESS" :
+        options.quality;
 
     for (const item of queue) {
         const details = {
@@ -118,7 +140,7 @@ if (userOptions.help) {
             albumYear: new Date(item.album.releaseDate).getFullYear()
         };
 
-        const downloadPath = formatPath(path.resolve(userOptions.directory, userOptions.filename), details);
+        const downloadPath = formatPath(path.resolve(options.directory, options.filename), details);
         await downloadTrack(details, downloadPath, quality);
     }
 
@@ -295,7 +317,7 @@ async function downloadTrack(details, downloadPath, quality) {
 
     if (fs.existsSync(trackPath) && !config.overwriteExisting) return log("Already downloaded!");
 
-    if (userOptions.lyrics) {
+    if (options.lyrics) {
         log("Getting lyrics...");
         lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics!"));
     }
