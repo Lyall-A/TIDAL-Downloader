@@ -13,14 +13,18 @@ class Logger {
 
         for (const level of this.levels) {
             if (!this.constructor.prototype[level.id]) {
-                this.constructor.prototype[level.id] = (msg, replaceLine) => this.log(level.id, msg, replaceLine);
+                this.constructor.prototype[level.id] = (msg, replaceLine, noStore) => this.log(level.id, msg, replaceLine, noStore);
             }
         }
     }
 
-    log(levelId, msg, replaceLine) {
+    emptyLine() {
+        this.log(null, '');
+    }
+
+    log(levelId, msg, replaceLine, noStore) {
         const level = this.levels.find(i => i.id === levelId);
-        if (!this.debugLogs && level.id === 'debug') return;
+        if (!this.debugLogs && level?.id === 'debug') return;
 
         if (replaceLine && !this.debugLogs) {
             const lastLogLines = this.lastLog.split('\n');
@@ -33,10 +37,12 @@ class Logger {
             }
         }
 
-        const prefix = level.prefix ?? level ? `[${this.applyColor(level.fgColor, level.bgColor, level.name)}]${this.levelPadding ? ' '.repeat(this.levelPadding - level.name.length) : ''} ` : '';
-        const suffix = level.suffix ?? '';
-        this.lastLog = `${prefix}${msg}${suffix}\n`;
-        process.stdout.write(this.lastLog);
+        const prefix = level?.prefix ?? level ? `[${this.applyColor(level.fgColor, level.bgColor, level.name)}]${this.levelPadding ? ' '.repeat(this.levelPadding - level.name.length) : ''} ` : '';
+        const suffix = level?.suffix ?? '';
+        const log = `${prefix}${msg}${suffix}\n`;
+        this.lastLog = !noStore ? log : '';
+
+        process.stdout.write(log);
     }
 
     applyColor(fgColor, bgColor, string) {

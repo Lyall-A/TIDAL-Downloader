@@ -117,12 +117,13 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 
             const result = await search(query, 1).then(i => i.topResults[0]);
             if (result?.type === "track") await addTrack(result.value.id); else
-                if (result?.type === "album") await addAlbum(result.value.id); else
-                    if (result?.type === "artist") await addArtist(result.value.id); else
-                        logger.error(`No search results for "${query}"\n`);
+            if (result?.type === "album") await addAlbum(result.value.id); else
+            if (result?.type === "artist") await addArtist(result.value.id); else
+            logger.error(`No search results for "${query}"`, false, true);
         }
     }
 
+    logger.emptyLine();
     logger.info(`Downloading ${queue.length} track(s)...`);
 
     let quality =
@@ -171,9 +172,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 albumArtists
             });
 
-            logger.info(`Found track: ${track.title} - ${track.artists[0].name}\n`);
+            logger.info(`Found track: ${track.title} - ${track.artists[0].name}`, false, true);
         } catch (err) {
-            logger.error(`Could not find track: ${trackId}\n`);
+            logger.error(`Could not find track: ${trackId}`, false, true);
         }
     }
 
@@ -199,9 +200,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 });
             }
 
-            logger.info(`Found album: ${album.title} - ${album.artists[0].name}\n`);
+            logger.info(`Found album: ${album.title} - ${album.artists[0].name}`, false, true);
         } catch (err) {
-            logger.error(`Could not find album: ${albumId}\n`);
+            logger.error(`Could not find album: ${albumId}`, false, true);
         }
     }
 
@@ -231,9 +232,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 }
             }
 
-            logger.info(`Found artist: ${artist.name} - ${artist.albums.length} albums\n`);
+            logger.info(`Found artist: ${artist.name} - ${artist.albums.length} albums`, false, true);
         } catch (err) {
-            logger.error(`Could not find artist: ${artistId}\n`);
+            logger.error(`Could not find artist: ${artistId}`, false, true);
         }
     }
 
@@ -259,7 +260,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 });
             }
 
-            logger.info(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks\n`);
+            logger.info(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks`, false, true);
         } catch (err) {
             logger.error(`Could not find playlist: ${playlistUuid}`);
         }
@@ -309,8 +310,8 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 })();
 
 async function downloadTrack(details, downloadPath, quality) {
-    // CHECK ME
-    logger.info("Getting playback info...");
+    logger.lastLog = '';
+    log("Getting playback info...");
 
     const coverPath = `${config.coverFilename ? formatPath(path.resolve(path.dirname(downloadPath), config.coverFilename), details) : downloadPath}.jpg`;
     const playbackInfo = await getPlaybackInfo(details.track.id, quality);
@@ -421,7 +422,7 @@ async function downloadTrack(details, downloadPath, quality) {
 
 async function authorize() {
     if (secrets.accessToken &&
-        secrets.accessTokenExpiry > Date.now()) return logger.debug("Token still valid, not refreshing\n"); // Previous token is still valid
+        secrets.accessTokenExpiry > Date.now()) return logger.debug("Token still valid, not refreshing"); // Previous token is still valid
 
     if (secrets.refreshToken && secrets.clientId && secrets.clientSecret) {
         // Refresh token exists
