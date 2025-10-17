@@ -42,7 +42,7 @@ const options = {
     tracks: args.getAll('track'),
     artists: args.getAll('artist'),
     albums: args.getAll('album'),
-    playlists: args.getAll('album'),
+    playlists: args.getAll('playlist'),
     searches: args.getAll('search'),
     // trackSearches: args.getAll('search-track'),
     // artistSearches: args.getAll('search-artist'),
