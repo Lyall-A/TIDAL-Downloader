@@ -16,6 +16,7 @@ const Args = require("./utils/Args");
 const formatPath = require("./utils/formatPath");
 const formatString = require("./utils/formatString");
 const embedMetadata = require("./utils/embedMetadata");
+const Logger = require('./utils/Logger');
 
 const { config, secrets } = require("./globals");
 
@@ -54,9 +55,13 @@ const options = {
     lyrics: args.get('lyrics') ?? config.getLyrics,
 };
 
+const logger = new Logger({
+    debugLogs: config.debug
+});
+
 if (options.help) {
     // oh boy 
-    return console.log(`
+    return logger.log(null, `
 Usage:
   ${process.argv0}${path.dirname(process.execPath) === process.cwd() ? '' : ' .'} [options...]
 Options:
@@ -73,7 +78,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 }
 
 (async () => {
-    console.log("Authorizing...");
+    logger.info("Authorizing...");
     await authorize();
 
     const tracks = [];
@@ -108,17 +113,17 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 
     if (options.searches.length) {
         for (const query of options.searches) {
-            changeLine(`Searching for: ${query}`);
+            logger.info(`Searching for: ${query}`, true);
 
             const result = await search(query, 1).then(i => i.topResults[0]);
             if (result?.type === "track") await addTrack(result.value.id); else
                 if (result?.type === "album") await addAlbum(result.value.id); else
                     if (result?.type === "artist") await addArtist(result.value.id); else
-                        console.log(`No search results for "${query}"\n`);
+                        logger.error(`No search results for "${query}"\n`);
         }
     }
 
-    console.log(`Downloading ${queue.length} track(s)...`);
+    logger.info(`Downloading ${queue.length} track(s)...`);
 
     let quality =
         options.quality === "low" ? "HIGH" :
@@ -166,9 +171,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 albumArtists
             });
 
-            console.log(`Found track: ${track.title} - ${track.artists[0].name}\n`);
+            logger.info(`Found track: ${track.title} - ${track.artists[0].name}\n`);
         } catch (err) {
-            console.log(`Could not find track: ${trackId}\n`);
+            logger.error(`Could not find track: ${trackId}\n`);
         }
     }
 
@@ -194,9 +199,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 });
             }
 
-            console.log(`Found album: ${album.title} - ${album.artists[0].name}\n`);
+            logger.info(`Found album: ${album.title} - ${album.artists[0].name}\n`);
         } catch (err) {
-            console.log(`Could not find album: ${albumId}\n`);
+            logger.error(`Could not find album: ${albumId}\n`);
         }
     }
 
@@ -226,9 +231,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 }
             }
 
-            console.log(`Found artist: ${artist.name} - ${artist.albums.length} albums\n`);
+            logger.info(`Found artist: ${artist.name} - ${artist.albums.length} albums\n`);
         } catch (err) {
-            console.log(`Could not find artist: ${artistId}\n`);
+            logger.error(`Could not find artist: ${artistId}\n`);
         }
     }
 
@@ -254,19 +259,19 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 });
             }
 
-            console.log(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks\n`);
+            logger.info(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks\n`);
         } catch (err) {
-            console.log(`Could not find playlist: ${playlistUuid}`);
+            logger.error(`Could not find playlist: ${playlistUuid}`);
         }
     }
 
     async function findTrack(trackId) {
         const foundTrack = tracks.find(track => track.id === trackId);
         if (foundTrack) {
-            debug(`Found already fetched track: ${trackId}`);
+            logger.debug(`Found already fetched track: ${trackId}`);
             return foundTrack;
         } else {
-            changeLine(`Getting information about track: ${trackId}`);
+            logger.info(`Getting information about track: ${trackId}`, true);
             // debug(`Fetching track: ${trackId}`);
             const track = await getTrack(trackId);
             tracks.push(track);
@@ -277,10 +282,10 @@ ${arg.description || 'No description...'}`).join('\n  ')}
     async function findAlbum(albumId) {
         const foundAlbum = albums.find(album => album.id === albumId);
         if (foundAlbum) {
-            debug(`Found already fetched album: ${albumId}`);
+            logger.debug(`Found already fetched album: ${albumId}`);
             return foundAlbum;
         } else {
-            changeLine(`Getting information about album: ${albumId}`);
+            logger.info(`Getting information about album: ${albumId}`, true);
             // debug(`Fetching album: ${albumId}`);
             const album = await getAlbum(albumId);
             albums.push(album);
@@ -291,10 +296,10 @@ ${arg.description || 'No description...'}`).join('\n  ')}
     async function findArtist(artistId) {
         const foundArtist = artists.find(artist => artist.id === artistId);
         if (foundArtist) {
-            debug(`Found already fetched artist: ${artistId}`);
+            logger.debug(`Found already fetched artist: ${artistId}`);
             return foundArtist;
         } else {
-            changeLine(`Getting information about artist: ${artistId}`);
+            logger.info(`Getting information about artist: ${artistId}`, true);
             // debug(`Fetching artist: ${artistId}`);
             const artist = await getArtist(artistId);
             artists.push(artist);
@@ -304,8 +309,8 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 })();
 
 async function downloadTrack(details, downloadPath, quality) {
-    console.log();
-    log("Getting playback info...");
+    // CHECK ME
+    logger.info("Getting playback info...");
 
     const coverPath = `${config.coverFilename ? formatPath(path.resolve(path.dirname(downloadPath), config.coverFilename), details) : downloadPath}.jpg`;
     const playbackInfo = await getPlaybackInfo(details.track.id, quality);
@@ -319,7 +324,7 @@ async function downloadTrack(details, downloadPath, quality) {
 
     if (options.lyrics) {
         log("Getting lyrics...");
-        lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics!"));
+        lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics", 'warn'));
     }
 
     // Download all segments
@@ -363,7 +368,7 @@ async function downloadTrack(details, downloadPath, quality) {
                 fs.writeFileSync(coverPath, coverBuffer);
                 coverExists = true;
             }).catch(err => {
-                log(`Failed to download cover: ${err.message}\n`);
+                log(`Failed to download cover: ${err.message}`, 'error');
             });
         }
 
@@ -391,7 +396,7 @@ async function downloadTrack(details, downloadPath, quality) {
 
         // Embed metadata
         await embedMetadata(trackPath, metadata).catch(err => {
-            log(`Failed to embed metadata: ${err.message}\n`);
+            log(`Failed to embed metadata: ${err.message}`, 'error');
         });
 
         // Delete cover art if coverFilename not set
@@ -402,18 +407,25 @@ async function downloadTrack(details, downloadPath, quality) {
 
     log("Completed");
 
-    function log(msg) {
-        changeLine(`Downloading track "${details.track.title} - ${details.artist.name}": ${msg}`);
+    function log(msg, level) {
+        const log = `Downloading track "${details.track.title}" - "${details.artist.name}": ${msg}`;
+        if (level) {
+            logger.log(level, log);
+            logger.lastLog = '';
+        } else {
+            logger.info(log, true);
+            // logger.info(`${`Downloading track "${details.track.title}" - "${details.artist.name}" `.padEnd(75, ' ')}[${msg}]`, true);
+        }
     }
 }
 
 async function authorize() {
     if (secrets.accessToken &&
-        secrets.accessTokenExpiry > Date.now()) return debug("Token still valid, not refreshing\n"); // Previous token is still valid
+        secrets.accessTokenExpiry > Date.now()) return logger.debug("Token still valid, not refreshing\n"); // Previous token is still valid
 
     if (secrets.refreshToken && secrets.clientId && secrets.clientSecret) {
         // Refresh token exists
-        debug("Refreshing token");
+        logger.debug("Refreshing token");
         await getToken("refresh_token", {
             refreshToken: secrets.refreshToken,
             clientId: secrets.clientId,
@@ -426,12 +438,12 @@ async function authorize() {
             secrets.scope = token.scope;
             secrets.countryCode = token.user?.countryCode;
         }).catch(err => {
-            console.log(`Failed to refresh token: ${err?.error_description || "No error description"} [${err?.sub_status || "No error code"}]`);
+            logger.error(`Failed to refresh token: ${err?.error_description || "No error description"} [${err?.sub_status || "No error code"}]`);
         });
     }
 
     if (!secrets.accessToken || secrets.accessTokenExpiry <= Date.now()) {
-        debug("Attempting to authorize with device authorization");
+        logger.debug("Attempting to authorize with device authorization");
         await authorizeWithDeviceAuthorization({
             clientId: config.clientId,
             clientSecret: config.clientSecret,
@@ -455,7 +467,7 @@ async function authorize() {
 
 async function authorizeWithDeviceAuthorization(params = {}) {
     const deviceAuthorization = await requestDeviceAuthorization(params.clientId, params.scope);
-    console.log(`To authenticate, please visit https://${deviceAuthorization.verificationUriComplete}`);
+    logger.info(`To authenticate, please visit https://${deviceAuthorization.verificationUriComplete}`);
 
     const deviceAuthorizationStart = Date.now();
     const token = await new Promise((resolve, reject) => {
@@ -471,7 +483,7 @@ async function authorizeWithDeviceAuthorization(params = {}) {
                 }).catch(err => {
                     if (Date.now() - deviceAuthorizationStart >= deviceAuthorization.expiresIn * 1000) {
                         // Code expired
-                        console.log("Code expired!");
+                        logger.warn("Code expired!");
                         return authorizeWithDeviceAuthorization(params);
                     }
                     if (err.sub_status !== 1002) {
@@ -487,13 +499,3 @@ async function authorizeWithDeviceAuthorization(params = {}) {
 
     return token;
 };
-
-function changeLine(msg) {
-    process.stdout.moveCursor(0, -1);
-    process.stdout.clearLine();
-    process.stdout.write(`${msg}\n`);
-}
-
-function debug(...msg) {
-    if (config.debug) console.log(`[DEBUG]`, ...msg);
-}
