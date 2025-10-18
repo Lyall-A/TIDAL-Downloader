@@ -20,7 +20,7 @@
 
 `segmentWaitMin` and `segmentWaitMax` adds a delay between downloading segments, can maybe reduce ban or rate limit risk (if there is one).
 
-Figure the rest out :)
+Check out `config.json` for more
 
 ## Dependencies
 * [Node.js](https://nodejs.org)
