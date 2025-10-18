@@ -1,4 +1,5 @@
-secrets.json
 Downloads
-kid3
-tddl
+bin
+dist
+src/secrets.json
+src/config.json

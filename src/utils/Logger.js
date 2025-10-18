@@ -63,7 +63,7 @@ class Logger {
         if (options.bold) ansiCodes.push(Logger.ANSI_CODES.BOLD);
         if (options.underline) ansiCodes.push(Logger.ANSI_CODES.UNDERLINE);
 
-        return `\x1b[${ansiCodes.filter(i => i).join(';')}m${string ? `${string}\x1b[${Logger.ANSI_CODES.RESET}m` : ''}`;
+        return `\x1b[${ansiCodes.filter(i => i).join(';')}m${string !== undefined ? `${string}\x1b[${Logger.ANSI_CODES.RESET}m` : ''}`;
     }
 
     emptyLine() {

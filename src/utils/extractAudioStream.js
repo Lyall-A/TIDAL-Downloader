@@ -1,6 +1,6 @@
 const child_process = require("child_process");
 
-const config = require("../config.json");
+const { config } = require("../globals");
 
 function extractAudioStream(inputPath, outputPath) {
     return new Promise((resolve, reject) => {

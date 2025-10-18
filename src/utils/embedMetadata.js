@@ -1,6 +1,6 @@
 const child_process = require("child_process");
 
-const config = require("../config.json");
+const { config } = require("../globals");
 
 function embedMetadata(file, tags) {
     return new Promise((resolve, reject) => {
