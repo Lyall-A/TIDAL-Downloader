@@ -357,7 +357,7 @@ async function downloadTrack(details, downloadPath, quality) {
     fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
     fs.writeFileSync(`${downloadPath}.mp4`, trackBuffer);
     await extractAudioStream(`${downloadPath}.mp4`, trackPath);
-    fs.rmSync(`${downloadPath}.mp4`);
+    if (!config.debug) fs.rmSync(`${downloadPath}.mp4`);
 
     if (config.embedMetadata) {
         // Get lyrics
