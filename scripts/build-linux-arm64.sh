@@ -1,6 +1,7 @@
 #!/bin/bash
 
-outdir=../dist/linux-arm64
+os=linux-arm64
+outdir=../dist/$os
 ext=
 target=bun-linux-arm64
 
@@ -14,5 +15,5 @@ bun build \
     --target=$target \
     --external="./config.json" \
     --external="./secrets.json" \
-    --outfile="$outdir/tidalwave$ext" \
+    --outfile="$outdir/tidalwave-$os$ext" \
     ./index.js

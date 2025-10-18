@@ -1,6 +1,7 @@
 #!/bin/bash
 
-outdir=../dist/macos-x64
+os=macos-x64
+outdir=../dist/$os
 ext=
 target=bun-darwin-x64
 
@@ -14,5 +15,5 @@ bun build \
     --target=$target \
     --external="./config.json" \
     --external="./secrets.json" \
-    --outfile="$outdir/tidalwave$ext" \
+    --outfile="$outdir/tidalwave-$os$ext" \
     ./index.js
