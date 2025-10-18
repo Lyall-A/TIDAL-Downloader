@@ -14,6 +14,7 @@
         ["tidal_trackid", "{{track.id}}"],
         ["tidal_artistid", "{{artist.id}}"]
     ],
+    "downloadLogPadding": 70,
     "overwriteExisting": false,
     "segmentWaitMin": 0,
     "segmentWaitMax": 0,

@@ -1,24 +1,24 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
-const requestDeviceAuthorization = require("./utils/requestDeviceAuthorization");
-const getToken = require("./utils/getToken");
-const getPlaybackInfo = require("./utils/getPlaybackInfo");
-const getAlbum = require("./utils/getAlbum");
-const getArtist = require("./utils/getArtist");
-const getTrack = require("./utils/getTrack");
-const getLyrics = require("./utils/getLyrics");
-const getPlaylist = require("./utils/getPlaylist");
-const search = require("./utils/search");
-const parseManifest = require("./utils/parseManifest");
-const extractAudioStream = require("./utils/extractAudioStream");
-const Args = require("./utils/Args");
-const formatPath = require("./utils/formatPath");
-const formatString = require("./utils/formatString");
-const embedMetadata = require("./utils/embedMetadata");
+const requestDeviceAuthorization = require('./utils/requestDeviceAuthorization');
+const getToken = require('./utils/getToken');
+const getPlaybackInfo = require('./utils/getPlaybackInfo');
+const getAlbum = require('./utils/getAlbum');
+const getArtist = require('./utils/getArtist');
+const getTrack = require('./utils/getTrack');
+const getLyrics = require('./utils/getLyrics');
+const getPlaylist = require('./utils/getPlaylist');
+const search = require('./utils/search');
+const parseManifest = require('./utils/parseManifest');
+const extractAudioStream = require('./utils/extractAudioStream');
+const Args = require('./utils/Args');
+const formatPath = require('./utils/formatPath');
+const formatString = require('./utils/formatString');
+const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
 
-const { config, secrets } = require("./globals");
+const { config, secrets } = require('./globals');
 
 const argOptions = [
     { name: 'help', shortName: 'h', noValue: true, description: 'Displays this menu' },
@@ -54,10 +54,14 @@ const options = {
     filename: args.get('filename') ?? config.downloadFilename,
     lyrics: args.get('lyrics') ?? config.getLyrics,
 };
-
 const logger = new Logger({
     debugLogs: config.debug
 });
+const quality =
+    options.quality === 'low' ? 'HIGH' :
+    options.quality === 'high' ? 'LOSSLESS' :
+    options.quality === 'max' ? 'HI_RES_LOSSLESS' :
+    options.quality;
 
 if (options.help) {
     // oh boy 
@@ -78,7 +82,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 }
 
 (async () => {
-    logger.info("Authorizing...");
+    logger.info('Authorizing...');
     await authorize();
 
     const tracks = [];
@@ -113,24 +117,20 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 
     if (options.searches.length) {
         for (const query of options.searches) {
-            logger.info(`Searching for: ${query}`, true);
+            logger.info(`Searching for: ${Logger.applyColor({ bold: true }, query)}`, true);
 
             const result = await search(query, 1).then(i => i.topResults[0]);
-            if (result?.type === "track") await addTrack(result.value.id); else
-            if (result?.type === "album") await addAlbum(result.value.id); else
-            if (result?.type === "artist") await addArtist(result.value.id); else
-            logger.error(`No search results for "${query}"`, false, true);
+            if (result?.type === 'track') await addTrack(result.value.id); else
+            if (result?.type === 'album') await addAlbum(result.value.id); else
+            if (result?.type === 'artist') await addArtist(result.value.id); else
+            logger.error(`No search results for "${Logger.applyColor({ bold: true }, query)}"`, true, true);
         }
     }
+        
+    // const startDate = Date.now();
 
     logger.emptyLine();
-    logger.info(`Downloading ${queue.length} track(s)...`);
-
-    let quality =
-        options.quality === "low" ? "HIGH" :
-        options.quality === "high" ? "LOSSLESS" :
-        options.quality === "max" ? "HI_RES_LOSSLESS" :
-        options.quality;
+    logger.info(`Downloading ${Logger.applyColor({ bold: true }, queue.length)} track(s)...`);
 
     for (const item of queue) {
         const details = {
@@ -142,7 +142,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 
             artist: item.artists[0],
             albumArtist: item.albumArtists[0],
-            trackNumberPadded: item.track.trackNumber.toString().padStart(2, "0"), // TODO: maybe remove this and add a padding function in formatString?
+            trackNumberPadded: item.track.trackNumber.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
             albumYear: new Date(item.album.releaseDate).getFullYear()
         };
 
@@ -150,7 +150,10 @@ ${arg.description || 'No description...'}`).join('\n  ')}
         await downloadTrack(details, downloadPath, quality);
     }
 
-    // console.log("Done downloading tracks");
+    // logger.emptyLine();
+    // logger.info(`Finished in ${((Date.now() - startDate) / 1000 / 60).toFixed(2)} minute(s)`)
+
+    // console.log('Done downloading tracks');
 
     async function addTrack(trackId) {
         const artists = [];
@@ -172,9 +175,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 albumArtists
             });
 
-            logger.info(`Found track: ${track.title} - ${track.artists[0].name}`, false, true);
+            logger.info(`Found track: ${Logger.applyColor({ bold: true }, `${track.title} - ${track.artists[0].name}`)} (${track.id})`, true, true);
         } catch (err) {
-            logger.error(`Could not find track: ${trackId}`, false, true);
+            logger.error(`Could not find track ID: ${Logger.applyColor({ bold: true }, trackId)}`, true, true);
         }
     }
 
@@ -200,9 +203,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 });
             }
 
-            logger.info(`Found album: ${album.title} - ${album.artists[0].name}`, false, true);
+            logger.info(`Found album: ${Logger.applyColor({ bold: true }, `${album.title} - ${album.artists[0].name}`)} (${album.id})`, true, true);
         } catch (err) {
-            logger.error(`Could not find album: ${albumId}`, false, true);
+            logger.error(`Could not find album ID: ${Logger.applyColor({ bold: true }, albumId)}`, true, true);
         }
     }
 
@@ -232,9 +235,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 }
             }
 
-            logger.info(`Found artist: ${artist.name} - ${artist.albums.length} albums`, false, true);
+            logger.info(`Found artist: ${Logger.applyColor({ bold: true }, `${artist.name} - ${artist.albums.length} albums`)} (${artist.id})`, true, true);
         } catch (err) {
-            logger.error(`Could not find artist: ${artistId}`, false, true);
+            logger.error(`Could not find artist ID: ${Logger.applyColor({ bold: true }, artistId)}`, true, true);
         }
     }
 
@@ -260,9 +263,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
                 });
             }
 
-            logger.info(`Found playlist: ${playlist.title} - ${playlist.trackCount} tracks`, false, true);
+            logger.info(`Found playlist: ${Logger.applyColor({ bold: true }, `${playlist.title} - ${playlist.trackCount} tracks`)} (${playlist.uuid})`, true, true);
         } catch (err) {
-            logger.error(`Could not find playlist: ${playlistUuid}`);
+            logger.error(`Could not find playlist UUID: ${Logger.applyColor({ bold: true }, playlistUuid)}`, true, true);
         }
     }
 
@@ -272,7 +275,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
             logger.debug(`Found already fetched track: ${trackId}`);
             return foundTrack;
         } else {
-            logger.info(`Getting information about track: ${trackId}`, true);
+            logger.info(`Getting information about track: ${Logger.applyColor({ bold: true }, trackId)}`, true);
             // debug(`Fetching track: ${trackId}`);
             const track = await getTrack(trackId);
             tracks.push(track);
@@ -286,7 +289,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
             logger.debug(`Found already fetched album: ${albumId}`);
             return foundAlbum;
         } else {
-            logger.info(`Getting information about album: ${albumId}`, true);
+            logger.info(`Getting information about album: ${Logger.applyColor({ bold: true }, albumId)}`, true);
             // debug(`Fetching album: ${albumId}`);
             const album = await getAlbum(albumId);
             albums.push(album);
@@ -300,7 +303,7 @@ ${arg.description || 'No description...'}`).join('\n  ')}
             logger.debug(`Found already fetched artist: ${artistId}`);
             return foundArtist;
         } else {
-            logger.info(`Getting information about artist: ${artistId}`, true);
+            logger.info(`Getting information about artist: ${Logger.applyColor({ bold: true }, artistId)}`, true);
             // debug(`Fetching artist: ${artistId}`);
             const artist = await getArtist(artistId);
             artists.push(artist);
@@ -310,23 +313,20 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 })();
 
 async function downloadTrack(details, downloadPath, quality) {
+    const startDate = Date.now();
+
     logger.lastLog = '';
-    log("Getting playback info...");
+    log('Getting playback info...');
 
     const coverPath = `${config.coverFilename ? formatPath(path.resolve(path.dirname(downloadPath), config.coverFilename), details) : downloadPath}.jpg`;
     const playbackInfo = await getPlaybackInfo(details.track.id, quality);
-    const manifest = parseManifest(Buffer.from(playbackInfo.manifest, "base64").toString(), playbackInfo.manifestMimeType);
-    const trackPath = `${downloadPath}${manifest.codecs === "flac" ? ".flac" : ".m4a"}`; // TODO: is it safe to assume AAC if not FLAC?
+    const manifest = parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
+    const trackPath = `${downloadPath}${manifest.codecs === 'flac' ? '.flac' : '.m4a'}`; // TODO: is it safe to assume AAC if not FLAC?
     let coverExists = fs.existsSync(coverPath);
     let lyrics;
     let trackBuffer;
 
-    if (fs.existsSync(trackPath) && !config.overwriteExisting) return log("Already downloaded!");
-
-    if (options.lyrics) {
-        log("Getting lyrics...");
-        lyrics = await getLyrics(details.track.id).catch(err => log("Couldn't get lyrics", 'warn'));
-    }
+    if (fs.existsSync(trackPath) && !config.overwriteExisting) return log('Already downloaded!');
 
     // Download all segments
     await new Promise((resolve, reject) => {
@@ -360,9 +360,15 @@ async function downloadTrack(details, downloadPath, quality) {
     fs.rmSync(`${downloadPath}.mp4`);
 
     if (config.embedMetadata) {
+        // Get lyrics
+        if (options.lyrics) {
+            log('Getting lyrics...');
+            lyrics = await getLyrics(details.track.id).catch(err => log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
+        }
+
         // Download cover
         if (details.album.cover && !fs.existsSync(coverPath)) {
-            log("Downloading cover...");
+            log('Downloading cover...');
             await fetch(details.album.cover).then(async res => {
                 if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
                 const coverBuffer = Buffer.from(await res.arrayBuffer());
@@ -373,24 +379,24 @@ async function downloadTrack(details, downloadPath, quality) {
             });
         }
 
-        log("Embedding metadata...");
+        log('Embedding metadata...');
         const metadata = [
-            ["title", details.track.title],
-            ["artist", config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
-            ["album", details.album.title],
-            ["albumartist", config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
-            ["date", details.album.releaseDate],
-            ["copyright", details.track.copyright],
-            ["originalyear", details.albumYear],
-            ["tracktotal", details.album.trackCount],
-            ["tracknumber", details.track.trackNumber],
-            ["disctotal", details.album.volumeCount],
-            ["discnumber", details.track.volumeNumber],
-            ["replaygain_track_gain", details.track.replayGain],
-            ["replaygain_track_peak", details.track.peak],
-            ["bpm", details.track.bpm],
-            ["lyrics", lyrics?.syncedLyrics || lyrics?.plainLyrics],
-            ["picture", coverExists ? coverPath : null, true],
+            ['title', details.track.title],
+            ['artist', config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
+            ['album', details.album.title],
+            ['albumartist', config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
+            ['date', details.album.releaseDate],
+            ['copyright', details.track.copyright],
+            ['originalyear', details.albumYear],
+            ['tracktotal', details.album.trackCount],
+            ['tracknumber', details.track.trackNumber],
+            ['disctotal', details.album.volumeCount],
+            ['discnumber', details.track.volumeNumber],
+            ['replaygain_track_gain', details.track.replayGain],
+            ['replaygain_track_peak', details.track.peak],
+            ['bpm', details.track.bpm],
+            ['lyrics', lyrics?.syncedLyrics || lyrics?.plainLyrics],
+            ['picture', coverExists ? coverPath : null, true],
             ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
         ];
         // console.log(metadata);
@@ -406,28 +412,26 @@ async function downloadTrack(details, downloadPath, quality) {
         }
     }
 
-    log("Completed");
+    log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
 
     function log(msg, level) {
-        const log = `Downloading track "${details.track.title}" - "${details.artist.name}": ${msg}`;
+        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${details.track.title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
         if (level) {
-            logger.log(level, log);
-            logger.lastLog = '';
+            logger.log(level, log, true, true);
         } else {
             logger.info(log, true);
-            // logger.info(`${`Downloading track "${details.track.title}" - "${details.artist.name}" `.padEnd(75, ' ')}[${msg}]`, true);
         }
     }
 }
 
 async function authorize() {
     if (secrets.accessToken &&
-        secrets.accessTokenExpiry > Date.now()) return logger.debug("Token still valid, not refreshing"); // Previous token is still valid
+        secrets.accessTokenExpiry > Date.now()) return logger.debug('Token still valid, not refreshing'); // Previous token is still valid
 
     if (secrets.refreshToken && secrets.clientId && secrets.clientSecret) {
         // Refresh token exists
-        logger.debug("Refreshing token");
-        await getToken("refresh_token", {
+        logger.debug('Refreshing token');
+        await getToken('refresh_token', {
             refreshToken: secrets.refreshToken,
             clientId: secrets.clientId,
             clientSecret: secrets.clientSecret
@@ -439,12 +443,12 @@ async function authorize() {
             secrets.scope = token.scope;
             secrets.countryCode = token.user?.countryCode;
         }).catch(err => {
-            logger.error(`Failed to refresh token: ${err?.error_description || "No error description"} [${err?.sub_status || "No error code"}]`);
+            logger.error(`Failed to refresh token: ${err?.error_description || 'No error description'} [${err?.sub_status || 'No error code'}]`);
         });
     }
 
     if (!secrets.accessToken || secrets.accessTokenExpiry <= Date.now()) {
-        logger.debug("Attempting to authorize with device authorization");
+        logger.debug('Attempting to authorize with device authorization');
         await authorizeWithDeviceAuthorization({
             clientId: config.clientId,
             clientSecret: config.clientSecret,
@@ -459,7 +463,7 @@ async function authorize() {
             secrets.scope = token.scope;
             secrets.countryCode = token.user?.countryCode;
         }).catch(err => {
-            throw new Error(`Failed to get access token: ${err?.error_description || "No error description"} [${err?.sub_status || "No error code"}]`);
+            throw new Error(`Failed to get access token: ${err?.error_description || 'No error description'} [${err?.sub_status || 'No error code'}]`);
         });
     }
 
@@ -474,7 +478,7 @@ async function authorizeWithDeviceAuthorization(params = {}) {
     const token = await new Promise((resolve, reject) => {
         (function waitForToken() {
             setTimeout(() => {
-                getToken("urn:ietf:params:oauth:grant-type:device_code", {
+                getToken('urn:ietf:params:oauth:grant-type:device_code', {
                     clientId: params.clientId,
                     clientSecret: params.clientSecret,
                     deviceCode: deviceAuthorization.deviceCode,
@@ -484,7 +488,7 @@ async function authorizeWithDeviceAuthorization(params = {}) {
                 }).catch(err => {
                     if (Date.now() - deviceAuthorizationStart >= deviceAuthorization.expiresIn * 1000) {
                         // Code expired
-                        logger.warn("Code expired!");
+                        logger.warn('Code expired!');
                         return authorizeWithDeviceAuthorization(params);
                     }
                     if (err.sub_status !== 1002) {
