@@ -11,20 +11,28 @@
 * `--filename <filename>`, `-f`: Set download filename, supports formatting, defaults to `downloadFilename` in config
 * `--lyrics <yes|no>`, `-l`: Sets if lyrics should be embedded or not, defaults to `getLyrics` in config
 
+## Usage
+Coming eventually
+
 ## Configuration
+`coverSize` can be set to `original` for very high quality cover art, however this breaks FFmpeg embedding if it's over 16MB
+
+`metadataEmbedder` can be set to `ffmpeg` or `kid3` to change how metadata is embedded, `kid3` must be downloaded for it to work
+
 `allowUserUploads` can be set to allow/block user uploaded tracks
 
-`artistSeperator` can be set to null to use only main artist.
+`artistSeperator` can be set to null to use only main artist
 
-`coverFilename` can be set to null to delete jpg after embedding.
+`coverFilename` can be set to null to delete jpg after embedding
 
-`segmentWaitMin` and `segmentWaitMax` adds a delay between downloading segments, can maybe reduce ban or rate limit risk (if there is one).
+`segmentWaitMin` and `segmentWaitMax` adds a delay between downloading segments, can maybe reduce ban or rate limit risk (if there is one)
 
 Check out `config.json` for more
 
 ## Dependencies
-* [Node.js](https://nodejs.org)
-* [Kid3-cli](https://kid3.kde.org) - Optional. Used to embed metadata
+* [Node.js](https://nodejs.org) - JavaScript runtime
+* [FFmpeg](https://www.ffmpeg.org/) - Used to extract FLAC/M4A from MP4 container and embed metadata
+* [Kid3-cli](https://kid3.kde.org) - Alternative option for embedding metadata
 
 ## Warning
 I don't know the risks from doing this. It is possible you can get banned, I'm not sure

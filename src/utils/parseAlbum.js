@@ -1,4 +1,4 @@
-const { config } = require("../globals");
+const { config, tidalAlbumCoverSizes } = require("../globals");
 
 function parseAlbum(album, additional = { }) {
     const parseTrack = require("./parseTrack");
@@ -14,8 +14,10 @@ function parseAlbum(album, additional = { }) {
         releaseDate: album.releaseDate,
         copyright: album.copyright,
         explicit: album.explicit,
-        cover: album.cover && `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, "/")}/origin.jpg` || undefined,
-        videoCover: album.videoCover && `${config.resourcesBaseUrl}/videos/${album.videoCover.replace(/-/g, "/")}/origin.mp4` || undefined,
+        covers: album.cover && Object.fromEntries(Object.entries(tidalAlbumCoverSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, "/")}/${size}.jpg`])) || undefined,
+        videoCovers: album.videoCover && Object.fromEntries(Object.entries(tidalAlbumCoverSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/videos/${album.cover.replace(/-/g, "/")}/${size}.mp4`])) || undefined,
+        // cover: album.cover && `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, "/")}/origin.jpg` || undefined,
+        // videoCover: album.videoCover && `${config.resourcesBaseUrl}/videos/${album.videoCover.replace(/-/g, "/")}/origin.mp4` || undefined,
         quality: album.audioQuality,
         modes: album.audioModes,
         qualityTypes: album.mediaMetadata?.tags,

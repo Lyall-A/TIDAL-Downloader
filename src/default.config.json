@@ -7,6 +7,7 @@
     "artistSeperator": "; ",
     "allowUserUploads": false,
     "coverFilename": "cover",
+    "coverSize": "1280",
     "customMetadata": [
         ["comment", "Downloaded from TIDAL: {{album.url}}"],
         ["tidal_albumid", "{{album.id}}"],
@@ -14,6 +15,7 @@
         ["tidal_trackid", "{{track.id}}"],
         ["tidal_artistid", "{{artist.id}}"]
     ],
+    "metadataEmbedder": "ffmpeg",
     "downloadLogPadding": 70,
     "overwriteExisting": false,
     "segmentWaitMin": 0,

@@ -7,5 +7,16 @@ const secrets = fs.existsSync(config.secretsPath) ? JSON.parse(fs.readFileSync(c
 
 module.exports = {
     config,
-    secrets
+    secrets,
+    tidalAlbumCoverSizes: {
+        '640': '640x640',
+        '1280': '1280x1280',
+        'original': 'origin'
+    },
+    tidalArtistPictureSizes: {
+        'original': 'origin'
+    },
+    tidalPlaylistImageSizes: {
+        'original': 'origin'
+    }
 }

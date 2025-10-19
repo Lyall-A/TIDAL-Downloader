@@ -17,6 +17,7 @@ const formatPath = require('./utils/formatPath');
 const formatString = require('./utils/formatString');
 const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
+const createAudio = require('./utils/createAudio');
 
 const { config, secrets } = require('./globals');
 
@@ -324,16 +325,62 @@ async function downloadTrack(details, downloadPath, quality) {
     const trackPath = `${downloadPath}${manifest.codecs === 'flac' ? '.flac' : '.m4a'}`; // TODO: is it safe to assume AAC if not FLAC?
     let coverExists = fs.existsSync(coverPath);
     let lyrics;
+    let metadata;
     let trackBuffer;
 
     if (fs.existsSync(trackPath) && !config.overwriteExisting) return log('Already downloaded!');
+    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+
+    if (config.embedMetadata) {
+        // Get lyrics
+        if (options.lyrics) {
+            log('Getting lyrics...');
+            lyrics = await getLyrics(details.track.id).catch(err => log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
+        }
+
+        // Download cover
+        if (!fs.existsSync(coverPath)) {
+            log('Downloading cover...');
+            await fetch(details.album.covers[config.coverSize] || details.album.covers['1280']).then(async res => {
+                if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
+                const coverBuffer = Buffer.from(await res.arrayBuffer());
+                fs.writeFileSync(coverPath, coverBuffer);
+                coverExists = true;
+            }).catch(err => {
+                log(`Failed to download cover: ${err.message}`, 'error');
+            });
+        }
+
+        metadata = [
+            ['title', details.track.title],
+            ['artist', config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
+            ['album', details.album.title],
+            ['albumartist', config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
+            ['date', details.album.releaseDate],
+            ['copyright', details.track.copyright],
+            ['originalyear', details.albumYear],
+            ['tracktotal', details.album.trackCount],
+            ['tracknumber', details.track.trackNumber],
+            ['disctotal', details.album.volumeCount],
+            ['discnumber', details.track.volumeNumber],
+            ['replaygain_album_gain', playbackInfo.albumReplayGain],
+            ['replaygain_album_peak', playbackInfo.albumPeakAmplitude],
+            ['replaygain_track_gain', playbackInfo.trackReplayGain || details.track.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
+            ['replaygain_track_peak', playbackInfo.trackPeakAmplitude || details.track.peak],
+            ['bpm', details.track.bpm],
+            ['lyrics', lyrics?.syncedLyrics || lyrics?.plainLyrics],
+            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
+        ];
+        // console.log(metadata);
+    }
 
     // Download all segments
     await new Promise((resolve, reject) => {
         (function downloadSegment(segmentIndex) {
-            const segment = manifest.segments[segmentIndex];
+            const segmentUrl = manifest.segments[segmentIndex]
+                .replace(/&amp;/g, '&'); // fix error when tidal uses key-pair-id parameter instead of token
             log(`Downloading segment ${segmentIndex + 1} of ${manifest.segments.length}...`);
-            fetch(segment).then(async res => {
+            fetch(segmentUrl).then(async res => {
                 // TODO: error
                 const segmentArrayBuffer = await res.arrayBuffer();
 
@@ -352,64 +399,34 @@ async function downloadTrack(details, downloadPath, quality) {
         })(0);
     });
 
-    // Save and extract audio from MP4
     log(`Saving as ${path.extname(trackPath)}...`);
-    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+
     fs.writeFileSync(`${downloadPath}.mp4`, trackBuffer);
-    await extractAudioStream(`${downloadPath}.mp4`, trackPath);
-    if (!config.debug) fs.rmSync(`${downloadPath}.mp4`);
+
+    if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
+        // Extract audio from MP4 container
+        await extractAudioStream(`${downloadPath}.mp4`, trackPath);
+    }
 
     if (config.embedMetadata) {
-        // Get lyrics
-        if (options.lyrics) {
-            log('Getting lyrics...');
-            lyrics = await getLyrics(details.track.id).catch(err => log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
-        }
-
-        // Download cover
-        if (details.album.cover && !fs.existsSync(coverPath)) {
-            log('Downloading cover...');
-            await fetch(details.album.cover).then(async res => {
-                if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
-                const coverBuffer = Buffer.from(await res.arrayBuffer());
-                fs.writeFileSync(coverPath, coverBuffer);
-                coverExists = true;
-            }).catch(err => {
-                log(`Failed to download cover: ${err.message}`, 'error');
-            });
-        }
-
-        log('Embedding metadata...');
-        const metadata = [
-            ['title', details.track.title],
-            ['artist', config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
-            ['album', details.album.title],
-            ['albumartist', config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
-            ['date', details.album.releaseDate],
-            ['copyright', details.track.copyright],
-            ['originalyear', details.albumYear],
-            ['tracktotal', details.album.trackCount],
-            ['tracknumber', details.track.trackNumber],
-            ['disctotal', details.album.volumeCount],
-            ['discnumber', details.track.volumeNumber],
-            ['replaygain_track_gain', details.track.replayGain],
-            ['replaygain_track_peak', details.track.peak],
-            ['bpm', details.track.bpm],
-            ['lyrics', lyrics?.syncedLyrics || lyrics?.plainLyrics],
-            ['picture', coverExists ? coverPath : null, true],
-            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
-        ];
-        // console.log(metadata);
-
         // Embed metadata
-        await embedMetadata(trackPath, metadata).catch(err => {
-            log(`Failed to embed metadata: ${err.message}`, 'error');
-        });
-
-        // Delete cover art if coverFilename not set
-        if (coverExists && !config.coverFilename) {
-            fs.rmSync(coverPath);
+        if (config.metadataEmbedder === 'kid3') {
+            // Embed via kid3
+            log('Embedding metadata...');
+            await embedMetadata(trackPath, [...metadata, ['picture', coverExists ? coverPath : undefined, true]]).catch(err => {
+                log(`Failed to embed metadata: ${err.message}`, 'error');
+            });
+        } else {
+            // Extract and embed via FFmpeg
+            await createAudio(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata);
         }
+    }
+    
+    if (!config.debug) fs.rmSync(`${downloadPath}.mp4`);
+
+    // Delete cover art if coverFilename not set
+    if (coverExists && !config.coverFilename) {
+        fs.rmSync(coverPath);
     }
 
     log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);

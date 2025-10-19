@@ -1,4 +1,4 @@
-const { config } = require ("../globals");
+const { config, tidalPlaylistImageSizes } = require ("../globals");
 
 const parseTrack = require("./parseTrack");
 
@@ -8,7 +8,8 @@ function parsePlaylist(playlist, additional = { }) {
         title: playlist.title,
         description: playlist.description,
         duration: playlist.duration,
-        image: playlist.squareImage && `${config.resourcesBaseUrl}/images/${playlist.squareImage.replace(/-/g, "/")}/origin.jpg` || undefined,
+        images: playlist.squareImage && Object.fromEntries(Object.entries(tidalPlaylistImageSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/images/${playlist.squareImage.replace(/-/g, "/")}/${size}.jpg`])) || undefined,
+        // image: playlist.squareImage && `${config.resourcesBaseUrl}/images/${playlist.squareImage.replace(/-/g, "/")}/origin.jpg` || undefined,
         customImage: playlist.customImageUrl,
         trackCount: playlist.numberOfTracks,
         sharing: playlist.sharingLevel,
