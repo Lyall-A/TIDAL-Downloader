@@ -1,5 +1,7 @@
-Downloads
-bin
+node_modules
 dist
+bin
+
+Downloads
 src/secrets.json
 src/config.json
