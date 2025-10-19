@@ -1,0 +1,28 @@
+{
+  "name": "tidalwave",
+  "version": "0.0.2",
+  "description": "A TIDAL downloader for tracks, albums, artist discographies and playlists",
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lyall-A/tidalwave.git"
+  },
+  "keywords": [
+    "music",
+    "downloader",
+    "streaming",
+    "media",
+    "flac",
+    "lossless",
+    "tidal"
+  ],
+  "author": "Lyall-A",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Lyall-A/tidalwave/issues"
+  },
+  "homepage": "https://github.com/Lyall-A/tidalwave#readme"
+}
