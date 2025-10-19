@@ -19,26 +19,9 @@ const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
 const createAudio = require('./utils/createAudio');
 
-const { config, secrets } = require('./globals');
+const { config, secrets, argOptions } = require('./globals');
 
-const argOptions = [
-    { name: 'help', shortName: 'h', noValue: true, description: 'Displays this menu' },
-    { name: 'track', shortName: 't', type: 'int', description: 'Downloads track', valueDescription: 'track-id' },
-    { name: 'album', shortName: 'm', type: 'int', description: 'Downloads album', valueDescription: 'album-id' },
-    { name: 'artist', shortName: 'a', type: 'int', description: 'Downloads artist discography', valueDescription: 'artist-id' },
-    { name: 'playlist', shortName: 'p', description: 'Downloads playlist items', valueDescription: 'playlist-uuid' },
-    { name: 'search', shortName: 's', description: 'Downloads top search result', valueDescription: 'query' },
-    // { name: 'search-track', shortName: 'st' },
-    // { name: 'search-album', shortName: 'sm' },
-    // { name: 'search-artist', shortName: 'sa' },
-    // { name: 'search-playlist', shortName: 'sp' },
-    { name: 'quality', shortName: 'q', description: 'Sets download quality', valueDescription: 'low|high|max' },
-    { name: 'directory', shortName: 'd', description: 'Sets directory path (supports formatting)', valueDescription: 'directory' },
-    { name: 'filename', shortName: 'f', description: 'Sets filename (supports formatting)', valueDescription: 'filename' },
-    { name: 'lyrics', shortName: 'l', type: 'bool', description: 'Enables or disables lyrics embedding', valueDescription: 'yes|no' },
-];
 const args = new Args(process.argv, argOptions);
-
 const options = {
     help: args.get('help'),
     tracks: args.getAll('track'),
@@ -66,7 +49,8 @@ const quality =
 
 if (options.help) {
     // oh boy 
-    return logger.log(null, `
+    logger.log(null,
+`
 Usage:
   ${process.argv0}${path.dirname(process.execPath) === process.cwd() ? '' : ' .'} [options...]
 Options:
@@ -80,6 +64,8 @@ Options:
 ${arg.valueDescription ? ` <${arg.valueDescription}>` : ''}`.padEnd(40 - 1, ' ')} \
 ${arg.description || 'No description...'}`).join('\n  ')}
 `.trim());
+
+    process.exit(0);
 }
 
 (async () => {
