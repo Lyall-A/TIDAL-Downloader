@@ -1,4 +1,5 @@
-# TIDAL Downloader
+# Tidalwave
+A TIDAL downloader for tracks, albums, artist discographies and playlists
 
 ## Arguments
 * `--track <id>`, `-t`: Download single track
@@ -14,6 +15,9 @@
 
 ## Usage
 Coming eventually
+
+## Screenshots
+<img src="https://raw.githubusercontent.com/Lyall-A/tidalwave/main/assets/screenshot-1.png">
 
 ## Configuration
 `coverSize` can be set to `original` for very high quality cover art, however this breaks FFmpeg embedding if it's over 16MB
