@@ -1,13 +1,26 @@
 const fs = require('fs');
+const path = require('path');
 
-if (!fs.existsSync('./config.json')) fs.writeFileSync('./config.json', JSON.stringify(require('./default.config.json'), null, 4));
+// bun moment
+const execDir = path.dirname(__filename);
+const execFile = __filename;
 
-const config = JSON.parse(fs.readFileSync('./config.json'));
-const secrets = fs.existsSync(config.secretsPath) ? JSON.parse(fs.readFileSync(config.secretsPath)) : { };
+// Read config
+const configPath = path.resolve(execDir, 'config.json');
+if (!fs.existsSync(configPath)) fs.writeFileSync(configPath, JSON.stringify(require('./default.config.json'), null, 4));
+const config = JSON.parse(fs.readFileSync(configPath));
+
+// Read secrets
+const secretsPath = config.secretsPath ? path.resolve(execDir, config.secretsPath) : undefined;
+const secrets = fs.existsSync(secretsPath) ? JSON.parse(fs.readFileSync(secretsPath)) : { };
 
 module.exports = {
     config,
     secrets,
+    configPath,
+    secretsPath,
+    execDir,
+    execFile,
     argOptions: [
         { name: 'help', shortName: 'h', noValue: true, description: 'Displays this menu' },
         { name: 'track', shortName: 't', type: 'int', description: 'Downloads track', valueDescription: 'track-id' },

@@ -19,7 +19,7 @@ const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
 const createAudio = require('./utils/createAudio');
 
-const { config, secrets, argOptions } = require('./globals');
+const { config, secrets, secretsPath, argOptions, execDir } = require('./globals');
 
 const args = new Args(process.argv, argOptions);
 const options = {
@@ -140,14 +140,12 @@ ${arg.description || 'No description...'}`).join('\n  ')}
             albumYear: new Date(item.album.releaseDate).getFullYear()
         };
 
-        const downloadPath = formatPath(path.resolve(options.directory, options.filename), details);
+        const downloadPath = path.join(execDir, formatPath(path.join(options.directory, options.filename), details));
         await downloadTrack(details, downloadPath, quality);
     }
 
     // logger.emptyLine();
     // logger.info(`Finished in ${((Date.now() - startDate) / 1000 / 60).toFixed(2)} minute(s)`)
-
-    // console.log('Done downloading tracks');
 
     async function addTrack(trackId) {
         const artists = [];
@@ -312,7 +310,7 @@ async function downloadTrack(details, downloadPath, quality) {
     logger.lastLog = '';
     log('Getting playback info...');
 
-    const coverPath = `${config.coverFilename ? formatPath(path.resolve(path.dirname(downloadPath), config.coverFilename), details) : downloadPath}.jpg`;
+    const coverPath = `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`;
     const playbackInfo = await getPlaybackInfo(details.track.id, quality);
     const manifest = parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
     const trackPath = `${downloadPath}${manifest.codecs === 'flac' ? '.flac' : '.m4a'}`; // TODO: is it safe to assume AAC if not FLAC?
@@ -477,7 +475,7 @@ async function authorize() {
         });
     }
 
-    fs.writeFileSync(config.secretsPath, JSON.stringify(secrets, null, 4));
+    if (secretsPath) fs.writeFileSync(secretsPath, JSON.stringify(secrets, null, 4));
 }
 
 async function authorizeWithDeviceAuthorization(params = {}) {

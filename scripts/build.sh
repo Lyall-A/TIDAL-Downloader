@@ -20,6 +20,7 @@ bun build \
     --target=$target \
     --external="./config.json" \
     --external="./secrets.json" \
+    --define="__filename=process.execPath" \
     --outfile="$out_dir/$filename$file_ext" \
     ./index.js
 
