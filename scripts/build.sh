@@ -18,8 +18,6 @@ cd ../src
 bun build \
     --compile \
     --production \
-    --minify \
-    --bytecode \
     --target=$target \
     --external="./config.json" \
     --external="./secrets.json" \
