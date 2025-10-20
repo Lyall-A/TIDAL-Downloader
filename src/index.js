@@ -48,26 +48,7 @@ const quality =
     options.quality === 'max' ? 'HI_RES_LOSSLESS' :
     options.quality;
 
-if (options.help) {
-    // oh boy 
-    logger.log(null,
-`
-Usage:
-  ${process.argv0}${path.dirname(process.execPath) === process.cwd() ? '' : ' .'} [options...]
-Options:
-  ${argOptions.map(arg => `${
-    `${[
-        arg.name ? `--${arg.name}` : null, 
-        arg.shortName ? `-${arg.shortName}` : null
-    ]
-    .filter(i => i)
-    .join(', ')}\
-${arg.valueDescription ? ` <${arg.valueDescription}>` : ''}`.padEnd(40 - 1, ' ')} \
-${arg.description || 'No description...'}`).join('\n  ')}
-`.trim());
-
-    process.exit(0);
-}
+if (options.help) showHelp();
 
 (async () => {
     logger.info('Authorizing...');
@@ -120,7 +101,9 @@ ${arg.description || 'No description...'}`).join('\n  ')}
             logger.error(`Couldn't determine URL "${Logger.applyColor({ bold: true }, url)}"`, true, true);
         }
     }
-        
+
+    if (queue.length === 0) showHelp();
+
     // const startDate = Date.now();
 
     logger.emptyLine();
@@ -512,3 +495,23 @@ async function authorizeWithDeviceAuthorization(params = {}) {
 
     return token;
 };
+
+function showHelp() {
+    logger.log(null,
+`
+Usage:
+  ${process.argv0}${path.dirname(process.execPath) === process.cwd() ? '' : ' .'} [options...]
+Options:
+  ${argOptions.map(arg => `${
+    `${[
+        arg.name ? `--${arg.name}` : null, 
+        arg.shortName ? `-${arg.shortName}` : null
+    ]
+    .filter(i => i)
+    .join(', ')}\
+${arg.valueDescription ? ` <${arg.valueDescription}>` : ''}`.padEnd(40 - 1, ' ')} \
+${arg.description || 'No description...'}`).join('\n  ')}
+`.trim());
+
+    process.exit(0);
+}
