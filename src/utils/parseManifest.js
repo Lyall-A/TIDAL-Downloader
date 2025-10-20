@@ -14,7 +14,7 @@ function parseManifest(manifest, manifestType) {
         segments: []
     };
 
-    if (manifestType === "application/dash+xml") {
+    if (manifestType === 'application/dash+xml') {
         // TODO: a little less jank perhaps
         parsedManifest.codecs = manifest.match(/(?:<|\s)codecs="(.*?)"/)?.[1];
         parsedManifest.audioSamplingRate = parseInt(manifest.match(/(?:<|\s)audioSamplingRate="(.*?)"/)?.[1]);

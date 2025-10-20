@@ -1,6 +1,6 @@
 function parseTrack(track) {
-    const parseArtist = require("./parseArtist");
-    const parseAlbum = require("./parseAlbum");
+    const parseArtist = require('./parseArtist');
+    const parseAlbum = require('./parseAlbum');
 
     return {
         id: track.id,

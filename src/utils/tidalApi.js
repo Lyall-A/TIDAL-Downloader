@@ -1,23 +1,23 @@
-const { config, secrets } = require("../globals");
+const { config, secrets } = require('../globals');
 
 function tidalApi(api = 'openv2', path, options = { }) {
     const baseUrl = api === 'openv2' ? config.openApiV2BaseUrl : api === 'privatev1' ? config.privateApiV1BaseUrl : api === 'privatev2' ? config.privateApiV2BaseUrl : null;
     const urlSearchParams = new URLSearchParams({
-        ...Object.fromEntries(new URLSearchParams(path.split("?")[1])),
+        ...Object.fromEntries(new URLSearchParams(path.split('?')[1])),
         ...(options.query || {}),
-        locale: "en_US",
+        locale: 'en_US',
         countryCode: secrets.countryCode,
-        deviceType: "BROWSER",
-        platform: "WEB"
+        deviceType: 'BROWSER',
+        platform: 'WEB'
     });
 
-    return fetch(`${baseUrl}${path.split("?")[0]}?${urlSearchParams.toString()}`, {
+    return fetch(`${baseUrl}${path.split('?')[0]}?${urlSearchParams.toString()}`, {
         method: options.method || 'GET',
         headers: {
             ...(options.headers || { }),
-            ...(options.json ? { "Content-Type": "application/json" } : { }),
+            ...(options.json ? { 'Content-Type': 'application/json' } : { }),
             Authorization: `${secrets.tokenType} ${secrets.accessToken}`,
-            "X-Tidal-Client-Version": ""
+            'X-Tidal-Client-Version': ''
         },
         body: options.json ? JSON.stringify(options.json) : undefined
     }).then(async res => {

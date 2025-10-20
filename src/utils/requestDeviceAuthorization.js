@@ -1,12 +1,12 @@
-const { config } = require("../globals");
+const { config } = require('../globals');
 
 function requestDeviceAuthorization(clientId, scope) {
     return fetch(`${config.authApiBaseUrl}/oauth2/device_authorization`, {
-        method: "POST",
+        method: 'POST',
         body: new URLSearchParams({
-            method: "POST",
+            method: 'POST',
             client_id: clientId,
-            scope: scope.join(" ")
+            scope: scope.join(' ')
         })
     }).then(async res => {
         let json;

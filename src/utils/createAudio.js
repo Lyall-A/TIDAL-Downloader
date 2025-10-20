@@ -1,6 +1,6 @@
 const spawn = require('./spawn');
 
-const { config } = require("../globals");
+const { config } = require('../globals');
 
 function createAudio(inputPath, outputPath, coverPath, metadata) {
     return spawn(config.ffmpegPath, [

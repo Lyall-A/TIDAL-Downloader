@@ -1,13 +1,13 @@
-const tidalApi = require("./tidalApi");
+const tidalApi = require('./tidalApi');
 
-const parsePlaylist = require("./parsePlaylist");
+const parsePlaylist = require('./parsePlaylist');
 
 async function getPlaylist(playlistUuid) {
-    const playlist = await tidalApi("privatev2", `/user-playlists/${playlistUuid}`).then(res => res.json);
+    const playlist = await tidalApi('privatev2', `/user-playlists/${playlistUuid}`).then(res => res.json);
 
     const items = [];
     await (async function getItems(offset = 0, limit = 50) {
-        return tidalApi("privatev1", `/playlists/${playlistUuid}/items`, {
+        return tidalApi('privatev1', `/playlists/${playlistUuid}/items`, {
             query: {
                 offset,
                 limit
