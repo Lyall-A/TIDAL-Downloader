@@ -8,6 +8,7 @@ const getAlbum = require('./utils/getAlbum');
 const getArtist = require('./utils/getArtist');
 const getTrack = require('./utils/getTrack');
 const getLyrics = require('./utils/getLyrics');
+const getVideo = require('./utils/getVideo');
 const getPlaylist = require('./utils/getPlaylist');
 const search = require('./utils/search');
 const parseManifest = require('./utils/parseManifest');
@@ -27,6 +28,7 @@ const options = {
     tracks: args.getAll('track'),
     artists: args.getAll('artist'),
     albums: args.getAll('album'),
+    videos: args.getAll('video'),
     playlists: args.getAll('playlist'),
     searches: args.getAll('search'),
     urls: args.getAll('url'),
@@ -56,12 +58,14 @@ if (options.help) showHelp();
 
     const tracks = [];
     const albums = [];
+    const videos = [];
     const artists = [];
 
     const queue = []; // Tracks to be downloaded
 
     for (const trackId of options.tracks) await addTrack(trackId); // Tracks
     for (const albumId of options.albums) await addAlbum(albumId); // Albums
+    for (const videoId of options.videos) await addVideo(videoId); // Videos
     for (const artistId of options.artists) await addArtist(artistId); // Artists
     for (const playlistUuid of options.playlists) await addPlaylist(playlistUuid); // Playlists
 
@@ -104,18 +108,30 @@ if (options.help) showHelp();
         const details = {
             track: item.track,
             album: item.album,
+            video: item.video,
             artists: item.artists,
             albumArtists: item.albumArtists,
             playlist: item.playlist,
+            type:
+                item.video ? 'video' :
+                item.track ? 'track' :
+                null,
+            isVideo: item.video ? true : false,
+            isTrack: item.track ? true : false,
 
             artist: item.artists[0],
             albumArtist: item.albumArtists[0],
-            trackNumberPadded: item.track.trackNumber.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
-            albumYear: new Date(item.album.releaseDate).getFullYear()
+            trackNumberPadded: (item.track || item.video).trackNumber.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
+            albumYear: item.album ? new Date(item.album.releaseDate).getFullYear() : null
         };
 
         const downloadPath = path.join(execDir, formatPath(path.join(options.directory, options.filename), details));
-        await downloadTrack(details, downloadPath, quality);
+
+        if (details.isTrack) {
+            await downloadTrack(details, downloadPath, quality);
+        } else if (details.isVideo) {
+            await downloadVideo(details, downloadPath, quality);
+        }
     }
 
     // logger.emptyLine();
@@ -172,6 +188,32 @@ if (options.help) showHelp();
             logger.info(`Found album: ${Logger.applyColor({ bold: true }, `${album.title} - ${album.artists[0].name}`)} (${album.id})`, true, true);
         } catch (err) {
             logger.error(`Could not find album ID: ${Logger.applyColor({ bold: true }, albumId)}`, true, true);
+        }
+    }
+
+    async function addVideo(videoId) {
+        const artists = [];
+        const albumArtists = [];
+
+        try {
+            const video = await findVideo(videoId);
+
+            // if (track.upload && !config.allowUserUploads) throw new Error();
+
+            const album = video.album ? await findAlbum(video.album.id) : null;
+            for (const artist of video.artists) artists.push(await findArtist(artist.id));
+            if (album) for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
+
+            queue.push({
+                video,
+                album,
+                artists,
+                albumArtists
+            });
+
+            logger.info(`Found video: ${Logger.applyColor({ bold: true }, `${video.title} - ${video.artists[0].name}`)} (${video.id})`, true, true);
+        } catch (err) {
+            logger.error(`Could not find video ID: ${Logger.applyColor({ bold: true }, videoId)}`, true, true);
         }
     }
 
@@ -262,6 +304,19 @@ if (options.help) showHelp();
             return album;
         }
     }
+    
+    async function findVideo(videoId) {
+        const foundVideo = videos.find(video => video.id === videoId);
+        if (foundVideo) {
+            logger.debug(`Found already fetched video: ${videoId}`);
+            return videoId;
+        } else {
+            logger.info(`Getting information about video: ${Logger.applyColor({ bold: true }, videoId)}`, true);
+            const video = await getVideo(videoId);
+            videos.push(video);
+            return video;
+        }
+    }
 
     async function findArtist(artistId) {
         const foundArtist = artists.find(artist => artist.id === artistId);
@@ -285,8 +340,8 @@ async function downloadTrack(details, downloadPath, quality) {
     log('Getting playback info...');
 
     const coverPath = `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`;
-    const playbackInfo = await getPlaybackInfo(details.track.id, quality);
-    const manifest = parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
+    const playbackInfo = await getPlaybackInfo(details.track.id, 'track', quality);
+    const manifest = await parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
     const trackPath = `${downloadPath}${manifest.codecs === 'flac' ? '.flac' : '.m4a'}`; // TODO: is it safe to assume AAC if not FLAC?
     let coverExists = fs.existsSync(coverPath);
     let lyrics;
@@ -398,6 +453,139 @@ async function downloadTrack(details, downloadPath, quality) {
 
     function log(msg, level) {
         const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${details.track.title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
+        if (level) {
+            logger.log(level, log, true, true);
+        } else {
+            logger.info(log, true);
+        }
+    }
+}
+
+async function downloadVideo(details, downloadPath, quality) {
+    const startDate = Date.now();
+
+    logger.lastLog = '';
+    log('Getting playback info...');
+
+    const coverPath = `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`;
+    const playbackInfo = await getPlaybackInfo(details.video.id, 'video', 'HIGH');
+    const manifest = await parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
+    const trackPath = `${downloadPath}.mp4`;
+    let coverExists = fs.existsSync(coverPath);
+    let lyrics;
+    let metadata;
+    let trackBuffer;
+
+    if (fs.existsSync(trackPath) && !config.overwriteExisting) return log('Already downloaded!');
+    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
+
+    // if (config.embedMetadata) {
+    if (false) {
+        // Get lyrics
+        if (options.lyrics) {
+            log('Getting lyrics...');
+            lyrics = await getLyrics(details.track.id).catch(err => log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
+        }
+
+        // Download cover
+        if (!fs.existsSync(coverPath)) {
+            log('Downloading cover...');
+            await fetch(details.album.covers[config.coverSize] || details.album.covers['1280']).then(async res => {
+                if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
+                const coverBuffer = Buffer.from(await res.arrayBuffer());
+                fs.writeFileSync(coverPath, coverBuffer);
+                coverExists = true;
+            }).catch(err => {
+                log(`Failed to download cover: ${err.message}`, 'error');
+            });
+        }
+
+        metadata = [
+            ['title', details.track.title],
+            ['artist', config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
+            ['album', details.album.title],
+            ['albumartist', config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
+            ['date', details.album.releaseDate],
+            ['copyright', details.track.copyright],
+            ['originalyear', details.albumYear],
+            ['tracktotal', details.album.trackCount],
+            ['tracknumber', details.track.trackNumber],
+            ['disctotal', details.album.volumeCount],
+            ['discnumber', details.track.volumeNumber],
+            ['replaygain_album_gain', playbackInfo.albumReplayGain],
+            ['replaygain_album_peak', playbackInfo.albumPeakAmplitude],
+            ['replaygain_track_gain', playbackInfo.trackReplayGain || details.track.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
+            ['replaygain_track_peak', playbackInfo.trackPeakAmplitude || details.track.peak],
+            ['bpm', details.track.bpm],
+            ['lyrics', lyrics?.syncedLyrics || lyrics?.plainLyrics],
+            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
+        ];
+        // console.log(metadata);
+    }
+
+    manifest.segments = manifest.mainManifests[0].segmentManifests[manifest.mainManifests[0].segmentManifests.length - 1].segments;
+
+    // Download all segments
+    await new Promise((resolve, reject) => {
+        (function downloadSegment(segmentIndex) {
+            const segmentUrl = manifest.segments[segmentIndex]
+                .replace(/&amp;/g, '&'); // fix error when tidal uses key-pair-id parameter instead of token
+            log(`Downloading segment ${segmentIndex + 1} of ${manifest.segments.length}...`);
+            fetch(segmentUrl).then(async res => {
+                // TODO: error
+                const segmentArrayBuffer = await res.arrayBuffer();
+
+                if (trackBuffer) {
+                    trackBuffer = Buffer.concat([trackBuffer, Buffer.from(segmentArrayBuffer)]);
+                } else {
+                    trackBuffer = Buffer.from(segmentArrayBuffer);
+                }
+
+                if (manifest.segments[++segmentIndex]) {
+                    setTimeout(() => downloadSegment(segmentIndex), Math.floor(Math.random() * (config.segmentWaitMax - config.segmentWaitMin + 1) + config.segmentWaitMin));
+                } else {
+                    resolve();
+                }
+            });
+        })(0);
+    });
+
+    log(`Saving as ${path.extname(trackPath)}...`);
+
+    fs.writeFileSync(`${downloadPath}.ts`, trackBuffer);
+
+    return;
+
+    if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
+        // Extract audio from MP4 container
+        await extractAudioStream(`${downloadPath}.mp4`, trackPath);
+    }
+
+    if (config.embedMetadata) {
+        // Embed metadata
+        if (config.metadataEmbedder === 'kid3') {
+            // Embed via kid3
+            log('Embedding metadata...');
+            await embedMetadata(trackPath, [...metadata, ['picture', coverExists ? coverPath : undefined, true]]).catch(err => {
+                log(`Failed to embed metadata: ${err.message}`, 'error');
+            });
+        } else {
+            // Extract and embed via FFmpeg
+            await createAudio(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata);
+        }
+    }
+    
+    if (!config.debug) fs.rmSync(`${downloadPath}.mp4`);
+
+    // Delete cover art if coverFilename not set
+    if (coverExists && !config.coverFilename) {
+        fs.rmSync(coverPath);
+    }
+
+    log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
+
+    function log(msg, level) {
+        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${(details.isTrack ? details.track : details.video).title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
         if (level) {
             logger.log(level, log, true, true);
         } else {
