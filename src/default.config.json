@@ -18,8 +18,8 @@
     "metadataEmbedder": "ffmpeg",
     "downloadLogPadding": 70,
     "overwriteExisting": false,
-    "segmentWaitMin": 0,
-    "segmentWaitMax": 0,
+    "segmentWaitMin": 50,
+    "segmentWaitMax": 50,
 
     "ffmpegPath": "ffmpeg",
     "kid3CliPath": "kid3-cli",
