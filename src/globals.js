@@ -15,6 +15,7 @@ module.exports = {
         { name: 'artist', shortName: 'a', type: 'int', description: 'Downloads artist discography', valueDescription: 'artist-id' },
         { name: 'playlist', shortName: 'p', description: 'Downloads playlist items', valueDescription: 'playlist-uuid' },
         { name: 'search', shortName: 's', description: 'Downloads top search result', valueDescription: 'query' },
+        { name: 'url', shortName: 'u', description: 'Download from URL', valueDescription: 'url' },
         // { name: 'search-track', shortName: 'st' },
         // { name: 'search-album', shortName: 'sm' },
         // { name: 'search-artist', shortName: 'sa' },

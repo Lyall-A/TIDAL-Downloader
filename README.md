@@ -6,6 +6,7 @@
 * `--artist <id>`, `-a`: Download artist's discography
 * `--playlist <uuid>`, `-p`: Download playlist
 * `--search <query>`, `-s`: Download first search result
+* `--url <url>`, `-u`: Download from URL
 * `--quality <low|high|max>`, `-q`: Set download quality, defaults to `quality` in config
 * `--directory <path>`, `-d`: Set download directory, supports formatting, defaults to `downloadDirectory` in config
 * `--filename <filename>`, `-f`: Set download filename, supports formatting, defaults to `downloadFilename` in config

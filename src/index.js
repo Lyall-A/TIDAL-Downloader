@@ -29,6 +29,7 @@ const options = {
     albums: args.getAll('album'),
     playlists: args.getAll('playlist'),
     searches: args.getAll('search'),
+    urls: args.getAll('url'),
     // trackSearches: args.getAll('search-track'),
     // artistSearches: args.getAll('search-artist'),
     // albumSearches: args.getAll('search-album'),
@@ -78,39 +79,45 @@ ${arg.description || 'No description...'}`).join('\n  ')}
 
     const queue = []; // Tracks to be downloaded
 
-    if (options.tracks.length) {
-        for (const trackId of options.tracks) {
-            await addTrack(trackId);
-        }
+    for (const trackId of options.tracks) {
+        await addTrack(trackId);
     }
 
-    if (options.albums.length) {
-        for (const albumId of options.albums) {
-            await addAlbum(albumId);
-        }
+    for (const albumId of options.albums) {
+        await addAlbum(albumId);
+    }
+    
+    for (const artistId of options.artists) {
+        await addArtist(artistId);
     }
 
-    if (options.artists.length) {
-        for (const artistId of options.artists) {
-            await addArtist(artistId);
-        }
+    for (const playlistUuid of options.playlists) {
+        await addPlaylist(playlistUuid);
     }
 
-    if (options.playlists.length) {
-        for (const playlistUuid of options.playlists) {
-            await addPlaylist(playlistUuid);
-        }
+    for (const query of options.searches) {
+        logger.info(`Searching for: ${Logger.applyColor({ bold: true }, query)}`, true);
+        const result = await search(query, 1).then(i => i.topResults[0]);
+
+        if (result?.type === 'track') await addTrack(result.value.id); else
+        if (result?.type === 'album') await addAlbum(result.value.id); else
+        if (result?.type === 'artist') await addArtist(result.value.id); else
+        logger.error(`No search results for "${Logger.applyColor({ bold: true }, query)}"`, true, true);
     }
 
-    if (options.searches.length) {
-        for (const query of options.searches) {
-            logger.info(`Searching for: ${Logger.applyColor({ bold: true }, query)}`, true);
-
-            const result = await search(query, 1).then(i => i.topResults[0]);
-            if (result?.type === 'track') await addTrack(result.value.id); else
-            if (result?.type === 'album') await addAlbum(result.value.id); else
-            if (result?.type === 'artist') await addArtist(result.value.id); else
-            logger.error(`No search results for "${Logger.applyColor({ bold: true }, query)}"`, true, true);
+    for (const url of options.urls) {
+        const match = url.match(/tidal\.com.*\/(track|album|artist|playlist)\/(\d+)/i);
+        if (match) {
+            const type = match[1].toLowerCase();
+            const id = parseInt(match[2], 10);
+            
+            if (type === 'track') await addTrack(id); else
+            if (type === 'album') await addAlbum(id); else
+            if (type === 'artist') await addArtist(id); else
+            if (type === 'playlist') await addPlaylist(id); else
+            logger.error(`Unknown type "${Logger.applyColor({ bold: true }, type)}"`, true, true); // NOTE: not possible with current regex
+        } else {
+            logger.error(`Couldn't determine URL "${Logger.applyColor({ bold: true }, url)}"`, true, true);
         }
     }
         
