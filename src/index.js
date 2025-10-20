@@ -60,22 +60,12 @@ if (options.help) showHelp();
 
     const queue = []; // Tracks to be downloaded
 
-    for (const trackId of options.tracks) {
-        await addTrack(trackId);
-    }
+    for (const trackId of options.tracks) await addTrack(trackId); // Tracks
+    for (const albumId of options.albums) await addAlbum(albumId); // Albums
+    for (const artistId of options.artists) await addArtist(artistId); // Artists
+    for (const playlistUuid of options.playlists) await addPlaylist(playlistUuid); // Playlists
 
-    for (const albumId of options.albums) {
-        await addAlbum(albumId);
-    }
-    
-    for (const artistId of options.artists) {
-        await addArtist(artistId);
-    }
-
-    for (const playlistUuid of options.playlists) {
-        await addPlaylist(playlistUuid);
-    }
-
+    // Searches
     for (const query of options.searches) {
         logger.info(`Searching for: ${Logger.applyColor({ bold: true }, query)}`, true);
         const result = await search(query, 1).then(i => i.topResults[0]);
@@ -86,6 +76,7 @@ if (options.help) showHelp();
         logger.error(`No search results for "${Logger.applyColor({ bold: true }, query)}"`, true, true);
     }
 
+    // URLS
     for (const url of options.urls) {
         const match = url.match(/tidal\.com.*\/(track|album|artist|playlist)\/(\d+)/i);
         if (match) {
