@@ -6,6 +6,7 @@ file_ext="$3"
 archive_ext="${4:-.zip}"
 
 dist_dir=../dist
+bin_dir=../bin
 out_dir=$dist_dir/$os
 filename=tidalwave
 archive_name=tidalwave-$os
@@ -17,6 +18,8 @@ cd ../src
 bun build \
     --compile \
     --production \
+    --minify \
+    --bytecode \
     --target=$target \
     --external="./config.json" \
     --external="./secrets.json" \
@@ -26,6 +29,7 @@ bun build \
 
 cp ./default.config.json "$out_dir/config.json"
 cp ../README.md "$out_dir/README.md"
+cp -r "$bin_dir/$os" "$out_dir/bin"
 chmod +x "$out_dir/$filename$file_ext"
 
 cp -r "$out_dir" "$dist_dir/$archive_name"
