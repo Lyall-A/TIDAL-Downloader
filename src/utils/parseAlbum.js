@@ -11,7 +11,7 @@ function parseAlbum(album, additional = { }) {
         duration: album.duration,
         trackCount: album.numberOfTracks,
         volumeCount: album.numberOfVolumes,
-        releaseDate: album.releaseDate,
+        releaseDate: new Date(album.releaseDate),
         copyright: album.copyright,
         explicit: album.explicit,
         covers: album.cover && Object.fromEntries(Object.entries(tidalAlbumCoverSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, '/')}/${size}.jpg`])) || undefined,

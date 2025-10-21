@@ -1,26 +1,22 @@
-function parseTrack(video) {
+const { config, tidalVideoCoverSizes } = require('../globals');
+
+// TODO: confirm album is always null
+function parseVideo(video) {
     const parseArtist = require('./parseArtist');
-    const parseAlbum = require('./parseAlbum');
 
     return {
         id: video.id,
         title: video.title,
+        type: video.type,
         duration: video.duration,
-        // upload: video.upload,
-        // copyright: video.copyright,
+        releaseDate: new Date(video.releaseDate),
         explicit: video.explicit,
-        quality: video.audioQuality,
-        // modes: video.audioModes,
-        // qualityTypes: video.mediaMetadata?.tags,
+        quality: video.quality,
+        images: video.imageId && Object.fromEntries(Object.entries(tidalVideoCoverSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/images/${video.imageId.replace(/-/g, '/')}/${size}.jpg`])) || undefined,
         trackNumber: video.trackNumber,
         volumeNumber: video.volumeNumber,
-        // replayGain: video.replayGain,
-        // peak: video.peak,
-        // bpm: video.bpm,
-        // url: video.url,
         artists: video.artists?.map(parseArtist),
-        album: video.album && parseAlbum(video.album) || undefined
     };
 }
 
-module.exports = parseTrack;
+module.exports = parseVideo;

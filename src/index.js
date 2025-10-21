@@ -18,7 +18,7 @@ const formatPath = require('./utils/formatPath');
 const formatString = require('./utils/formatString');
 const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
-const createAudio = require('./utils/createAudio');
+const createMedia = require('./utils/createMedia');
 
 const { config, secrets, secretsPath, argOptions, execDir } = require('./globals');
 
@@ -119,10 +119,10 @@ if (options.help) showHelp();
             isVideo: item.video ? true : false,
             isTrack: item.track ? true : false,
 
-            artist: item.artists[0],
-            albumArtist: item.albumArtists[0],
-            trackNumberPadded: (item.track || item.video).trackNumber.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
-            albumYear: item.album ? new Date(item.album.releaseDate).getFullYear() : null
+            artist: item.artists?.[0],
+            albumArtist: item.albumArtists?.[0],
+            trackNumberPadded: item.track?.trackNumber?.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
+            releaseYear: item.album ? item.album.releaseDate.getFullYear() : null
         };
 
         const downloadPath = path.join(execDir, formatPath(path.join(options.directory, options.filename), details));
@@ -193,22 +193,15 @@ if (options.help) showHelp();
 
     async function addVideo(videoId) {
         const artists = [];
-        const albumArtists = [];
 
         try {
             const video = await findVideo(videoId);
 
-            // if (track.upload && !config.allowUserUploads) throw new Error();
-
-            const album = video.album ? await findAlbum(video.album.id) : null;
             for (const artist of video.artists) artists.push(await findArtist(artist.id));
-            if (album) for (const artist of album.artists) albumArtists.push(await findArtist(artist.id));
 
             queue.push({
                 video,
-                album,
                 artists,
-                albumArtists
             });
 
             logger.info(`Found video: ${Logger.applyColor({ bold: true }, `${video.title} - ${video.artists[0].name}`)} (${video.id})`, true, true);
@@ -361,7 +354,7 @@ async function downloadTrack(details, downloadPath, quality) {
         // Download cover
         if (!fs.existsSync(coverPath)) {
             log('Downloading cover...');
-            await fetch(details.album.covers[config.coverSize] || details.album.covers['1280']).then(async res => {
+            await fetch(details.album.covers[config.trackCoverSize] || details.album.covers['1280']).then(async res => {
                 if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
                 const coverBuffer = Buffer.from(await res.arrayBuffer());
                 fs.writeFileSync(coverPath, coverBuffer);
@@ -438,7 +431,7 @@ async function downloadTrack(details, downloadPath, quality) {
             });
         } else {
             // Extract and embed via FFmpeg
-            await createAudio(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata);
+            await createMedia(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata, 1);
         }
     }
     
@@ -472,25 +465,17 @@ async function downloadVideo(details, downloadPath, quality) {
     const manifest = await parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
     const trackPath = `${downloadPath}.mp4`;
     let coverExists = fs.existsSync(coverPath);
-    let lyrics;
     let metadata;
     let trackBuffer;
 
     if (fs.existsSync(trackPath) && !config.overwriteExisting) return log('Already downloaded!');
     fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
 
-    // if (config.embedMetadata) {
-    if (false) {
-        // Get lyrics
-        if (options.lyrics) {
-            log('Getting lyrics...');
-            lyrics = await getLyrics(details.track.id).catch(err => log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
-        }
-
+    if (config.embedMetadata) {
         // Download cover
         if (!fs.existsSync(coverPath)) {
             log('Downloading cover...');
-            await fetch(details.album.covers[config.coverSize] || details.album.covers['1280']).then(async res => {
+            await fetch(details.video.images[config.videoCoverSize] || details.video.images['1280x720']).then(async res => {
                 if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
                 const coverBuffer = Buffer.from(await res.arrayBuffer());
                 fs.writeFileSync(coverPath, coverBuffer);
@@ -501,28 +486,15 @@ async function downloadVideo(details, downloadPath, quality) {
         }
 
         metadata = [
-            ['title', details.track.title],
-            ['artist', config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
-            ['album', details.album.title],
-            ['albumartist', config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
-            ['date', details.album.releaseDate],
-            ['copyright', details.track.copyright],
-            ['originalyear', details.albumYear],
-            ['tracktotal', details.album.trackCount],
-            ['tracknumber', details.track.trackNumber],
-            ['disctotal', details.album.volumeCount],
-            ['discnumber', details.track.volumeNumber],
-            ['replaygain_album_gain', playbackInfo.albumReplayGain],
-            ['replaygain_album_peak', playbackInfo.albumPeakAmplitude],
-            ['replaygain_track_gain', playbackInfo.trackReplayGain || details.track.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
-            ['replaygain_track_peak', playbackInfo.trackPeakAmplitude || details.track.peak],
-            ['bpm', details.track.bpm],
-            ['lyrics', lyrics?.syncedLyrics || lyrics?.plainLyrics],
+            ['title', details.video.title],
+            ['artist', config.artistSeperator ? details.video.artists.map(i => i.name).join(config.artistSeperator) : details.video.artists[0].name],
+            // ['date', details.video.releaseDate],
             ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
         ];
         // console.log(metadata);
     }
 
+    // temp
     manifest.segments = manifest.mainManifests[0].segmentManifests[manifest.mainManifests[0].segmentManifests.length - 1].segments;
 
     // Download all segments
@@ -554,30 +526,30 @@ async function downloadVideo(details, downloadPath, quality) {
 
     fs.writeFileSync(`${downloadPath}.ts`, trackBuffer);
 
-    return;
+    await createMedia(`${downloadPath}.ts`, trackPath, coverExists ? coverPath : undefined, metadata, 2);
 
-    if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
-        // Extract audio from MP4 container
-        await extractAudioStream(`${downloadPath}.mp4`, trackPath);
-    }
+    // if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
+    //     // Extract audio from MP4 container
+    //     await extractAudioStream(`${downloadPath}.mp4`, trackPath);
+    // }
 
-    if (config.embedMetadata) {
-        // Embed metadata
-        if (config.metadataEmbedder === 'kid3') {
-            // Embed via kid3
-            log('Embedding metadata...');
-            await embedMetadata(trackPath, [...metadata, ['picture', coverExists ? coverPath : undefined, true]]).catch(err => {
-                log(`Failed to embed metadata: ${err.message}`, 'error');
-            });
-        } else {
-            // Extract and embed via FFmpeg
-            await createAudio(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata);
-        }
-    }
+    // if (config.embedMetadata) {
+    //     // Embed metadata
+    //     if (config.metadataEmbedder === 'kid3') {
+    //         // Embed via kid3
+    //         log('Embedding metadata...');
+    //         await embedMetadata(trackPath, [...metadata, ['picture', coverExists ? coverPath : undefined, true]]).catch(err => {
+    //             log(`Failed to embed metadata: ${err.message}`, 'error');
+    //         });
+    //     } else {
+    //         // Extract and embed via FFmpeg
+    //         await createAudio(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata);
+    //     }
+    // }
     
-    if (!config.debug) fs.rmSync(`${downloadPath}.mp4`);
+    if (!config.debug) fs.rmSync(`${downloadPath}.ts`);
 
-    // Delete cover art if coverFilename not set
+    // // Delete cover art if coverFilename not set
     if (coverExists && !config.coverFilename) {
         fs.rmSync(coverPath);
     }
@@ -585,7 +557,7 @@ async function downloadVideo(details, downloadPath, quality) {
     log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
 
     function log(msg, level) {
-        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${(details.isTrack ? details.track : details.video).title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
+        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${details.video.title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
         if (level) {
             logger.log(level, log, true, true);
         } else {

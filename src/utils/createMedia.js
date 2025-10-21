@@ -2,19 +2,19 @@ const spawn = require('./spawn');
 
 const { config } = require('../globals');
 
-function createAudio(inputPath, outputPath, coverPath, metadata) {
+function createMedia(inputPath, outputPath, coverPath, metadata, streams = 1) {
     return spawn(config.ffmpegPath, [
         '-i', inputPath,
         ...(coverPath ? [
             '-i', coverPath,
-            '-map', '0:a',
-            '-map', '1:v',
-            '-metadata:s:v', 'comment=Cover (front)',
-            '-disposition:v', 'attached_pic',
+            ...(Array.from({ length: streams }, (value, i) => ['-map', `0:${i}`])).flat(),
+            '-map', '1',
+            `-metadata:s:${streams}`, 'comment=Cover (front)',
+            `-disposition:${streams}`, 'attached_pic',
         ] : []),
         '-map_metadata', '-1',
         ...metadata.filter(i => i[1] !== undefined && i[1] !== null).map(([tag, value]) => ['-metadata', `${tag}=${value}`]).flat(),
-        '-c:a', 'copy',
+        '-c', 'copy',
         outputPath,
         '-y'
     ]).then(spawnedProcess => {
@@ -22,4 +22,4 @@ function createAudio(inputPath, outputPath, coverPath, metadata) {
     });
 }
 
-module.exports = createAudio;
+module.exports = createMedia;

@@ -1,4 +1,5 @@
 {
+    "_version": 1,
     "downloadDirectory": "./Downloads/{{albumArtist.name}}/{{album.title}} ({{albumYear}})",
     "downloadFilename": "{{artist.name}} - {{album.title}} - {{track.title}} - {{trackNumberPadded}}",
     "quality": "HI_RES_LOSSLESS",
@@ -7,7 +8,8 @@
     "artistSeperator": "; ",
     "allowUserUploads": false,
     "coverFilename": "cover",
-    "coverSize": "1280",
+    "trackCoverSize": "1280",
+    "videoCoverSize": "1280x720",
     "customMetadata": [
         ["comment", "Downloaded from TIDAL: {{album.url}}"],
         ["tidal_albumid", "{{album.id}}"],

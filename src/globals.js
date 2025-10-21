@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const parseConfig = require('./utils/parseConfig');
+
 // bun moment
 const execDir = path.dirname(__filename);
 const execFile = __filename;
@@ -8,7 +10,7 @@ const execFile = __filename;
 // Read config
 const configPath = path.resolve(execDir, 'config.json');
 if (!fs.existsSync(configPath)) fs.writeFileSync(configPath, JSON.stringify(require('./default.config.json'), null, 4));
-const config = JSON.parse(fs.readFileSync(configPath));
+const config = parseConfig(configPath);
 
 // Read secrets
 const secretsPath = config.secretsPath ? path.resolve(execDir, config.secretsPath) : undefined;
@@ -39,6 +41,13 @@ module.exports = {
         { name: 'filename', shortName: 'f', description: 'Sets filename (supports formatting)', valueDescription: 'filename' },
         { name: 'lyrics', shortName: 'l', type: 'bool', description: 'Enables or disables lyrics embedding', valueDescription: 'yes|no' },
     ],
+    tidalVideoCoverSizes: {
+        '640': '640x640',
+        '1280': '1280x1280',
+        '1280x720': '1280x720',
+        '640x360': '640x360',
+        'original': 'origin'
+    },
     tidalAlbumCoverSizes: {
         '640': '640x640',
         '1280': '1280x1280',
