@@ -12,15 +12,16 @@ const getVideo = require('./utils/getVideo');
 const getPlaylist = require('./utils/getPlaylist');
 const search = require('./utils/search');
 const parseManifest = require('./utils/parseManifest');
-const extractAudioStream = require('./utils/extractAudioStream');
+const extractAudioStream = require('./utils/extractContainer');
 const Args = require('./utils/Args');
 const formatPath = require('./utils/formatPath');
 const formatString = require('./utils/formatString');
 const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
 const createMedia = require('./utils/createMedia');
+const Download = require('./utils/Download');
 
-const { config, secrets, secretsPath, argOptions, execDir } = require('./globals');
+const { config, secrets, secretsPath, argOptions, execDir, logger } = require('./globals');
 
 const args = new Args(process.argv, argOptions);
 const options = {
@@ -41,9 +42,6 @@ const options = {
     filename: args.get('filename') ?? config.downloadFilename,
     lyrics: args.get('lyrics') ?? config.getLyrics,
 };
-const logger = new Logger({
-    debugLogs: config.debug
-});
 const quality =
     options.quality === 'low' ? 'HIGH' :
     options.quality === 'high' ? 'LOSSLESS' :
@@ -112,13 +110,25 @@ if (options.help) showHelp();
             artists: item.artists,
             albumArtists: item.albumArtists,
             playlist: item.playlist,
-            type:
-                item.video ? 'video' :
-                item.track ? 'track' :
-                null,
-            isVideo: item.video ? true : false,
-            isTrack: item.track ? true : false,
 
+            type:
+                item.track ? 'track' :
+                item.video ? 'video' :
+                null,
+            isTrack: item.track ? true : false,
+            isVideo: item.video ? true : false,
+            id:
+                item.track ? item.track.id :
+                item.video ? item.video.id : 
+                null,
+            title:
+                item.track ? item.track.title :
+                item.video ? item.video.title :
+                null,
+            cover:
+                item.album ? item.album.covers[config.trackCoverSize] || item.album.covers['1280'] :
+                item.video ? item.video.images[config.videoCoverSize] || item.video.images['1280x720'] :
+                null,
             artist: item.artists?.[0],
             albumArtist: item.albumArtists?.[0],
             trackNumberPadded: item.track?.trackNumber?.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
@@ -455,116 +465,21 @@ async function downloadTrack(details, downloadPath, quality) {
 }
 
 async function downloadVideo(details, downloadPath, quality) {
-    const startDate = Date.now();
-
-    logger.lastLog = '';
-    log('Getting playback info...');
-
-    const coverPath = `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`;
-    const playbackInfo = await getPlaybackInfo(details.video.id, 'video', 'HIGH');
-    const manifest = await parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
-    const trackPath = `${downloadPath}.mp4`;
-    let coverExists = fs.existsSync(coverPath);
-    let metadata;
-    let trackBuffer;
-
-    if (fs.existsSync(trackPath) && !config.overwriteExisting) return log('Already downloaded!');
-    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
-
-    if (config.embedMetadata) {
-        // Download cover
-        if (!fs.existsSync(coverPath)) {
-            log('Downloading cover...');
-            await fetch(details.video.images[config.videoCoverSize] || details.video.images['1280x720']).then(async res => {
-                if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
-                const coverBuffer = Buffer.from(await res.arrayBuffer());
-                fs.writeFileSync(coverPath, coverBuffer);
-                coverExists = true;
-            }).catch(err => {
-                log(`Failed to download cover: ${err.message}`, 'error');
-            });
-        }
-
-        metadata = [
-            ['title', details.video.title],
-            ['artist', config.artistSeperator ? details.video.artists.map(i => i.name).join(config.artistSeperator) : details.video.artists[0].name],
-            // ['date', details.video.releaseDate],
-            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
-        ];
-        // console.log(metadata);
-    }
-
-    // temp
-    manifest.segments = manifest.mainManifests[0].segmentManifests[manifest.mainManifests[0].segmentManifests.length - 1].segments;
-
-    // Download all segments
-    await new Promise((resolve, reject) => {
-        (function downloadSegment(segmentIndex) {
-            const segmentUrl = manifest.segments[segmentIndex]
-                .replace(/&amp;/g, '&'); // fix error when tidal uses key-pair-id parameter instead of token
-            log(`Downloading segment ${segmentIndex + 1} of ${manifest.segments.length}...`);
-            fetch(segmentUrl).then(async res => {
-                // TODO: error
-                const segmentArrayBuffer = await res.arrayBuffer();
-
-                if (trackBuffer) {
-                    trackBuffer = Buffer.concat([trackBuffer, Buffer.from(segmentArrayBuffer)]);
-                } else {
-                    trackBuffer = Buffer.from(segmentArrayBuffer);
-                }
-
-                if (manifest.segments[++segmentIndex]) {
-                    setTimeout(() => downloadSegment(segmentIndex), Math.floor(Math.random() * (config.segmentWaitMax - config.segmentWaitMin + 1) + config.segmentWaitMin));
-                } else {
-                    resolve();
-                }
-            });
-        })(0);
+    const download = new Download({
+        details,
+        quality,
+        downloadPath,
+        coverPath: `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`
     });
-
-    log(`Saving as ${path.extname(trackPath)}...`);
-
-    fs.writeFileSync(`${downloadPath}.ts`, trackBuffer);
-
-    await createMedia(`${downloadPath}.ts`, trackPath, coverExists ? coverPath : undefined, metadata, 2);
-
-    // if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
-    //     // Extract audio from MP4 container
-    //     await extractAudioStream(`${downloadPath}.mp4`, trackPath);
-    // }
-
-    // if (config.embedMetadata) {
-    //     // Embed metadata
-    //     if (config.metadataEmbedder === 'kid3') {
-    //         // Embed via kid3
-    //         log('Embedding metadata...');
-    //         await embedMetadata(trackPath, [...metadata, ['picture', coverExists ? coverPath : undefined, true]]).catch(err => {
-    //             log(`Failed to embed metadata: ${err.message}`, 'error');
-    //         });
-    //     } else {
-    //         // Extract and embed via FFmpeg
-    //         await createAudio(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata);
-    //     }
-    // }
     
-    if (!config.debug) fs.rmSync(`${downloadPath}.ts`);
-
-    // // Delete cover art if coverFilename not set
-    if (coverExists && !config.coverFilename) {
-        fs.rmSync(coverPath);
-    }
-
-    log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
-
-    function log(msg, level) {
-        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${details.video.title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
-        if (level) {
-            logger.log(level, log, true, true);
-        } else {
-            logger.info(log, true);
-        }
-    }
+    await download.getSegments();
+    await download.getMetadata();
+    await download.downloadSegments();
+    await download.createMedia();
+    if (!config.debug) download.removeContainerFile();
+    if (!config.coverFilename) download.removeCoverFile();
 }
+
 
 async function authorize() {
     if (secrets.accessToken &&

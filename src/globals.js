@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const parseConfig = require('./utils/parseConfig');
+const Logger = require('./utils/Logger');
 
 // bun moment
 const execDir = path.dirname(__filename);
@@ -16,6 +17,10 @@ const config = parseConfig(configPath);
 const secretsPath = config.secretsPath ? path.resolve(execDir, config.secretsPath) : undefined;
 const secrets = fs.existsSync(secretsPath) ? JSON.parse(fs.readFileSync(secretsPath)) : { };
 
+const logger = new Logger({
+    debugLogs: config.debug
+});
+
 module.exports = {
     config,
     secrets,
@@ -23,6 +28,7 @@ module.exports = {
     secretsPath,
     execDir,
     execFile,
+    logger,
     argOptions: [
         { name: 'help', shortName: 'h', noValue: true, description: 'Displays this menu' },
         { name: 'track', shortName: 't', type: 'int', description: 'Downloads track', valueDescription: 'track-id' },
