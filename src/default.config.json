@@ -5,7 +5,7 @@
     "videoDirectory": "./Downloads/{{artist.name}}/{{video.title}} ({{releaseYear}})",
     "videoFilename": "{{artist.name}} - {{video.title}}",
     "trackQuality": "MAX",
-    "videoQuality": null,
+    "videoQuality": "MAX",
     "getLyrics": true,
     "syncedLyricsOnly": false,
     "plainLyricsOnly": false,
