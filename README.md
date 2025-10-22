@@ -4,13 +4,13 @@ A TIDAL downloader for tracks, albums, artist discographies and playlists
 ## Arguments
 * `--track <id>`, `-t`: Download single track
 * `--album <id>`, `-m`: Download single album
+* `--video <id>`, `-v`: Download single video
 * `--artist <id>`, `-a`: Download artist's discography
 * `--playlist <uuid>`, `-p`: Download playlist
 * `--search <query>`, `-s`: Download first search result
 * `--url <url>`, `-u`: Download from URL
-* `--quality <low|high|max>`, `-q`: Set download quality, defaults to `quality` in config
-* `--directory <path>`, `-d`: Set download directory, supports formatting, defaults to `downloadDirectory` in config
-* `--filename <filename>`, `-f`: Set download filename, supports formatting, defaults to `downloadFilename` in config
+* `--track-quality <low|high|max>`, `-tq`: Set download quality, defaults to `trackQuality` in config
+* `--video-quality low|high|max|<height>`, `-vq`: Set download quality, defaults to `videoQuality` in config
 * `--lyrics <yes|no>`, `-l`: Sets if lyrics should be embedded or not, defaults to `getLyrics` in config
 
 ## Usage

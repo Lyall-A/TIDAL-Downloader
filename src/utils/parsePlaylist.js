@@ -13,8 +13,8 @@ function parsePlaylist(playlist, additional = { }) {
         customImage: playlist.customImageUrl,
         trackCount: playlist.numberOfTracks,
         sharing: playlist.sharingLevel,
-        created: new Date(playlist.created),
-        lastUpdated: new Date(playlist.lastUpdated),
+        created: playlist.created,
+        lastUpdated: playlist.lastUpdated,
         tracks: additional?.items?.filter(({ type }) => type === 'track').map(({ item }) => parseTrack(item))
     };
 }

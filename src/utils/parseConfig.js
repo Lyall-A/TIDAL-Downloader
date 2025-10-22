@@ -11,10 +11,26 @@ function parseConfig(configPath) {
         ...jsonConfig
     };
 
+    // TODO: create replace function
     if (!version) {
         if (config.coverSize !== undefined) {
             config.trackCoverSize = config.coverSize;
             delete config.coverSize;
+        }
+
+        if (config.downloadDirectory !== undefined) {
+            config.albumDirectory = config.downloadDirectory;
+            delete config.downloadDirectory;
+        }
+
+        if (config.downloadFilename !== undefined) {
+            config.trackFilename = config.downloadFilename;
+            delete config.downloadFilename;
+        }
+
+        if (config.quality !== undefined) {
+            config.trackQuality = config.quality;
+            delete config.quality;
         }
         
         config._version = 1;

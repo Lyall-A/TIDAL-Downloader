@@ -22,16 +22,32 @@ class Download {
     metadata;
 
     constructor(options = { }) {
-        this.startDate = Date.now();
         this.details = options.details;
-        this.quality = options.quality;
+        this.trackQuality = options.trackQuality;
+        this.videoQuality = options.videoQuality;
         this.downloadPath = options.downloadPath;
         this.coverPath = options.coverPath;
+    }
+    
+    async download() {
+        const startDate = Date.now();
+        logger.lastLog = '';
+
+        fs.mkdirSync(path.dirname(this.downloadPath), { recursive: true }); // Create directory
+        await this.getSegments(); // Get segment URL's
+        if (fs.existsSync(`${this.downloadPath}${this.extension}`) && !config.overwriteExisting) return this.log('Already downloaded!'); // Check if already downloaded
+        await this.downloadSegments(); // Download segments
+        await this.getMetadata(); // Get metadata
+        await this.createMedia(); // Create output
+        if (!config.debug) fs.rmSync(`${this.downloadPath}${this.containerExtension}`); // Delete container file
+        if (!config.coverFilename && fs.existsSync(this.coverPath)) fs.rmSync(this.coverPath); // Delete cover file
+
+        this.log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
     }
 
     async getSegments() {
         this.log('Getting segment URL\'s...');
-        this.playbackInfo = await getPlaybackInfo(this.details.id, this.details.type, this.details.isVideo ? 'HIGH' : this.quality);
+        this.playbackInfo = await getPlaybackInfo(this.details.id, this.details.type, this.details.isVideo ? 'HIGH' : this.trackQuality);
         this.manifest = await parseManifest(Buffer.from(this.playbackInfo.manifest, 'base64').toString(), this.playbackInfo.manifestMimeType);
         
         if (this.details.isTrack) {
@@ -40,7 +56,24 @@ class Download {
             this.extension = this.manifest.codecs === 'flac' ? '.flac' : '.m4a'; // TODO: is it safe to assume AAC if not FLAC?
         } else if (this.details.isVideo) {
             const segmentManifests = this.manifest.mainManifests[0].segmentManifests;
-            this.segmentUrls = segmentManifests[segmentManifests.length - 1].segments; // TODO: pick res obviously
+
+            const segmentManifest = this.videoQuality ?
+                segmentManifests.reduce((closest, curr) => {
+                    const height = parseInt(curr.resolution.split('x')[1], 10);
+                    const closestHeight = parseInt(closest.resolution.split('x')[1], 10);
+                    const targetHeight = parseInt(this.videoQuality, 10);
+                    return Math.abs(height - targetHeight) < Math.abs(closestHeight - targetHeight) ? curr : closest;
+                }) :
+                segmentManifests.reduce((highest, curr) => {
+                    const height = parseInt(curr.resolution.split('x')[1], 10);
+                    const highestHeight = parseInt(highest.resolution.split('x')[1], 10);
+                    return height > highestHeight ? curr : highest;
+                });
+
+            // this.segmentUrls = segmentManifests[segmentManifests.length - 1].segments;
+            this.segmentUrls = segmentManifest.segments;
+            console.log(segmentManifest)
+            
             this.containerExtension = '.ts';
             this.extension = '.mp4';
         }
@@ -71,22 +104,28 @@ class Download {
 
         this.metadata = [
             ['title', this.details.title],
-            ['artist', config.artistSeperator ? this.details.artists.map(i => i.name).join(config.artistSeperator) : this.details.artist.name],
-            // ['album', this.details.album.title],
-            // ['albumartist', config.artistSeperator ? this.details.albumArtists.map(i => i.name).join(config.artistSeperator) : this.details.albumArtist.name],
-            // ['date', this.details.album.releaseDate],
-            // ['copyright', this.details.track.copyright],
-            // ['originalyear', this.details.albumYear],
-            // ['tracktotal', this.details.album.trackCount],
-            // ['tracknumber', this.details.track.trackNumber],
-            // ['disctotal', this.details.album.volumeCount],
-            // ['discnumber', this.details.track.volumeNumber],
-            // ['replaygain_album_gain', this.playbackInfo.albumReplayGain],
-            // ['replaygain_album_peak', this.playbackInfo.albumPeakAmplitude],
-            // ['replaygain_track_gain', this.playbackInfo.trackReplayGain || this.details.track.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
-            // ['replaygain_track_peak', this.playbackInfo.trackPeakAmplitude || this.details.track.peak],
-            // ['bpm', this.details.track.bpm],
-            ['lyrics', this.lyrics?.syncedLyrics || this.lyrics?.plainLyrics],
+            ['artist', config.artistSeperator ? this.details.artists?.map(i => i.name).join(config.artistSeperator) : this.details.artist?.name],
+            ['album', this.details.album?.title],
+            ['albumartist', config.artistSeperator ? this.details.albumArtists?.map(i => i.name).join(config.artistSeperator) : this.details.albumArtist?.name],
+            ['date', this.details.releaseDate],
+            ['originalyear', this.details.releaseYear],
+            ['rating', this.details.explicit ? 'Explicit' : 'Clean'],
+            ['isrc', this.details.track?.isrc],
+            ['upc', this.details.album?.upc], // NOTE: private api doesn't include this so always blank
+            ['copyright', this.details.track?.copyright],
+            ['tracktotal', this.details.album?.trackCount],
+            ['tracknumber', this.details.track?.trackNumber],
+            ['disctotal', this.details.album?.volumeCount],
+            ['discnumber', this.details.track?.volumeNumber],
+            ['replaygain_album_gain', this.playbackInfo.albumReplayGain],
+            ['replaygain_album_peak', this.playbackInfo.albumPeakAmplitude],
+            ['replaygain_track_gain', this.playbackInfo.trackReplayGain || this.details.track?.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
+            ['replaygain_track_peak', this.playbackInfo.trackPeakAmplitude || this.details.track?.peak],
+            ['bpm', this.details.track?.bpm],
+            ['lyrics',
+                config.syncedLyricsOnly ? this.lyrics?.syncedLyrics :
+                config.plainLyricsOnly ? this.lyrics?.plainLyrics :
+                this.lyrics?.syncedLyrics || this.lyrics?.plainLyrics],
             ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], this.details)])) || [])
         ];
         // console.log(this.metadata);
@@ -129,7 +168,7 @@ class Download {
                 });
             } else {
                 // Extract and embed via FFmpeg
-                this.log(`Creating ${this.extension} from ${this.containerExtension} container with metadata...`);
+                this.log(`Creating ${this.extension} with metadata from ${this.containerExtension} container...`);
                 await createMedia(`${this.downloadPath}${this.containerExtension}`, `${this.downloadPath}${this.extension}`, fs.existsSync(this.coverPath) ? this.coverPath : undefined, this.metadata, this.details.isVideo ? 2 : 1);
             }
         }

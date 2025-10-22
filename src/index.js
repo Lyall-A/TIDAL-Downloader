@@ -3,22 +3,15 @@ const path = require('path');
 
 const requestDeviceAuthorization = require('./utils/requestDeviceAuthorization');
 const getToken = require('./utils/getToken');
-const getPlaybackInfo = require('./utils/getPlaybackInfo');
 const getAlbum = require('./utils/getAlbum');
 const getArtist = require('./utils/getArtist');
 const getTrack = require('./utils/getTrack');
-const getLyrics = require('./utils/getLyrics');
 const getVideo = require('./utils/getVideo');
 const getPlaylist = require('./utils/getPlaylist');
 const search = require('./utils/search');
-const parseManifest = require('./utils/parseManifest');
-const extractAudioStream = require('./utils/extractContainer');
 const Args = require('./utils/Args');
 const formatPath = require('./utils/formatPath');
-const formatString = require('./utils/formatString');
-const embedMetadata = require('./utils/embedMetadata');
 const Logger = require('./utils/Logger');
-const createMedia = require('./utils/createMedia');
 const Download = require('./utils/Download');
 
 const { config, secrets, secretsPath, argOptions, execDir, logger } = require('./globals');
@@ -33,21 +26,10 @@ const options = {
     playlists: args.getAll('playlist'),
     searches: args.getAll('search'),
     urls: args.getAll('url'),
-    // trackSearches: args.getAll('search-track'),
-    // artistSearches: args.getAll('search-artist'),
-    // albumSearches: args.getAll('search-album'),
-    // playlistSearches: args.getAll('search-playlist'),
-    quality: args.get('quality') ?? config.quality,
-    directory: args.get('directory') ?? config.downloadDirectory,
-    filename: args.get('filename') ?? config.downloadFilename,
+    trackQuality: (args.get('track-quality') ?? config.trackQuality)?.toLowerCase(),
+    videoQuality: (args.get('video-quality') ?? config.videoQuality)?.toLowerCase(),
     lyrics: args.get('lyrics') ?? config.getLyrics,
 };
-const quality =
-    options.quality === 'low' ? 'HIGH' :
-    options.quality === 'high' ? 'LOSSLESS' :
-    options.quality === 'max' ? 'HI_RES_LOSSLESS' :
-    options.quality;
-
 if (options.help) showHelp();
 
 (async () => {
@@ -74,19 +56,22 @@ if (options.help) showHelp();
 
         if (result?.type === 'track') await addTrack(result.value.id); else
         if (result?.type === 'album') await addAlbum(result.value.id); else
+        if (result?.type === 'video') await addVideo(result.value.id); else
         if (result?.type === 'artist') await addArtist(result.value.id); else
+        if (result?.type === 'playlist') await addPlaylist(result.value.id); else
         logger.error(`No search results for "${Logger.applyColor({ bold: true }, query)}"`, true, true);
     }
 
     // URLS
     for (const url of options.urls) {
-        const match = url.match(/tidal\.com.*\/(track|album|artist|playlist)\/(\d+)/i);
+        const match = url.match(/tidal\.com.*\/(track|album|video|artist|playlist)\/(\d+)/i);
         if (match) {
             const type = match[1].toLowerCase();
             const id = parseInt(match[2], 10);
             
             if (type === 'track') await addTrack(id); else
             if (type === 'album') await addAlbum(id); else
+            if (type === 'video') await addVideo(id); else
             if (type === 'artist') await addArtist(id); else
             if (type === 'playlist') await addPlaylist(id); else
             logger.error(`Unknown type "${Logger.applyColor({ bold: true }, type)}"`, true, true); // NOTE: not possible with current regex
@@ -110,13 +95,18 @@ if (options.help) showHelp();
             artists: item.artists,
             albumArtists: item.albumArtists,
             playlist: item.playlist,
+            
+            artist: item.artists?.[0],
+            albumArtist: item.albumArtists?.[0],
+            trackNumberPadded: item.track?.trackNumber?.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
+            isTrack: item.track ? true : false,
+            isVideo: item.video ? true : false,
 
+            // Generic details
             type:
                 item.track ? 'track' :
                 item.video ? 'video' :
                 null,
-            isTrack: item.track ? true : false,
-            isVideo: item.video ? true : false,
             id:
                 item.track ? item.track.id :
                 item.video ? item.video.id : 
@@ -129,19 +119,48 @@ if (options.help) showHelp();
                 item.album ? item.album.covers[config.trackCoverSize] || item.album.covers['1280'] :
                 item.video ? item.video.images[config.videoCoverSize] || item.video.images['1280x720'] :
                 null,
-            artist: item.artists?.[0],
-            albumArtist: item.albumArtists?.[0],
-            trackNumberPadded: item.track?.trackNumber?.toString().padStart(2, '0'), // TODO: maybe remove this and add a padding function in formatString?
-            releaseYear: item.album ? item.album.releaseDate.getFullYear() : null
+            url:
+                item.album ? `https://tidal.com/album/${item.album.id}` :
+                item.video ? `https://tidal.com/video/${item.video.id}` :
+                null,
+            releaseDate:
+                item.album?.releaseDate ? new Date(item.album.releaseDate).toISOString().split('T')[0] :
+                item.video?.releaseDate ? new Date(item.video.releaseDate).toISOString().split('T')[0] :
+                null,
+            releaseYear:
+                item.album?.releaseDate ? new Date(item.album.releaseDate).getFullYear() :
+                item.video?.releaseDate ? new Date(item.video.releaseDate).getFullYear() :
+                null,
+            explicit:
+                item.track ? item.track.explicit :
+                item.video ? item.video.explicit :
+                null,
         };
 
-        const downloadPath = path.join(execDir, formatPath(path.join(options.directory, options.filename), details));
+        const downloadPath = path.join(execDir, formatPath(path.join(
+            details.isTrack ? config.albumDirectory : config.videoDirectory,
+            details.isTrack ? config.trackFilename : config.videoFilename
+        ), details));
 
-        if (details.isTrack) {
-            await downloadTrack(details, downloadPath, quality);
-        } else if (details.isVideo) {
-            await downloadVideo(details, downloadPath, quality);
-        }
+        const trackQuality =
+            options.trackQuality === 'low' ? 'HIGH' :
+            options.trackQuality === 'high' ? 'LOSSLESS' :
+            options.trackQuality === 'max' ? 'HI_RES_LOSSLESS' :
+            options.trackQuality;
+
+        const videoQuality =
+            options.videoQuality === 'low' ? '480' :
+            options.videoQuality === 'high' ? '720' :
+            options.videoQuality === 'max' ? null :
+            options.videoQuality;
+
+        await new Download({
+            details,
+            trackQuality,
+            videoQuality,
+            downloadPath,
+            coverPath: `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`
+        }).download();
     }
 
     // logger.emptyLine();
@@ -336,151 +355,6 @@ if (options.help) showHelp();
     }
 })();
 
-async function downloadTrack(details, downloadPath, quality) {
-    const startDate = Date.now();
-
-    logger.lastLog = '';
-    log('Getting playback info...');
-
-    const coverPath = `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`;
-    const playbackInfo = await getPlaybackInfo(details.track.id, 'track', quality);
-    const manifest = await parseManifest(Buffer.from(playbackInfo.manifest, 'base64').toString(), playbackInfo.manifestMimeType);
-    const trackPath = `${downloadPath}${manifest.codecs === 'flac' ? '.flac' : '.m4a'}`; // TODO: is it safe to assume AAC if not FLAC?
-    let coverExists = fs.existsSync(coverPath);
-    let lyrics;
-    let metadata;
-    let trackBuffer;
-
-    if (fs.existsSync(trackPath) && !config.overwriteExisting) return log('Already downloaded!');
-    fs.mkdirSync(path.dirname(downloadPath), { recursive: true });
-
-    if (config.embedMetadata) {
-        // Get lyrics
-        if (options.lyrics) {
-            log('Getting lyrics...');
-            lyrics = await getLyrics(details.track.id).catch(err => log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
-        }
-
-        // Download cover
-        if (!fs.existsSync(coverPath)) {
-            log('Downloading cover...');
-            await fetch(details.album.covers[config.trackCoverSize] || details.album.covers['1280']).then(async res => {
-                if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
-                const coverBuffer = Buffer.from(await res.arrayBuffer());
-                fs.writeFileSync(coverPath, coverBuffer);
-                coverExists = true;
-            }).catch(err => {
-                log(`Failed to download cover: ${err.message}`, 'error');
-            });
-        }
-
-        metadata = [
-            ['title', details.track.title],
-            ['artist', config.artistSeperator ? details.artists.map(i => i.name).join(config.artistSeperator) : details.artist.name],
-            ['album', details.album.title],
-            ['albumartist', config.artistSeperator ? details.albumArtists.map(i => i.name).join(config.artistSeperator) : details.albumArtist.name],
-            ['date', details.album.releaseDate],
-            ['copyright', details.track.copyright],
-            ['originalyear', details.albumYear],
-            ['tracktotal', details.album.trackCount],
-            ['tracknumber', details.track.trackNumber],
-            ['disctotal', details.album.volumeCount],
-            ['discnumber', details.track.volumeNumber],
-            ['replaygain_album_gain', playbackInfo.albumReplayGain],
-            ['replaygain_album_peak', playbackInfo.albumPeakAmplitude],
-            ['replaygain_track_gain', playbackInfo.trackReplayGain || details.track.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
-            ['replaygain_track_peak', playbackInfo.trackPeakAmplitude || details.track.peak],
-            ['bpm', details.track.bpm],
-            ['lyrics', lyrics?.syncedLyrics || lyrics?.plainLyrics],
-            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], details)])) || [])
-        ];
-        // console.log(metadata);
-    }
-
-    // Download all segments
-    await new Promise((resolve, reject) => {
-        (function downloadSegment(segmentIndex) {
-            const segmentUrl = manifest.segments[segmentIndex]
-                .replace(/&amp;/g, '&'); // fix error when tidal uses key-pair-id parameter instead of token
-            log(`Downloading segment ${segmentIndex + 1} of ${manifest.segments.length}...`);
-            fetch(segmentUrl).then(async res => {
-                // TODO: error
-                const segmentArrayBuffer = await res.arrayBuffer();
-
-                if (trackBuffer) {
-                    trackBuffer = Buffer.concat([trackBuffer, Buffer.from(segmentArrayBuffer)]);
-                } else {
-                    trackBuffer = Buffer.from(segmentArrayBuffer);
-                }
-
-                if (manifest.segments[++segmentIndex]) {
-                    setTimeout(() => downloadSegment(segmentIndex), Math.floor(Math.random() * (config.segmentWaitMax - config.segmentWaitMin + 1) + config.segmentWaitMin));
-                } else {
-                    resolve();
-                }
-            });
-        })(0);
-    });
-
-    log(`Saving as ${path.extname(trackPath)}...`);
-
-    fs.writeFileSync(`${downloadPath}.mp4`, trackBuffer);
-
-    if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
-        // Extract audio from MP4 container
-        await extractAudioStream(`${downloadPath}.mp4`, trackPath);
-    }
-
-    if (config.embedMetadata) {
-        // Embed metadata
-        if (config.metadataEmbedder === 'kid3') {
-            // Embed via kid3
-            log('Embedding metadata...');
-            await embedMetadata(trackPath, [...metadata, ['picture', coverExists ? coverPath : undefined, true]]).catch(err => {
-                log(`Failed to embed metadata: ${err.message}`, 'error');
-            });
-        } else {
-            // Extract and embed via FFmpeg
-            await createMedia(`${downloadPath}.mp4`, trackPath, coverExists ? coverPath : undefined, metadata, 1);
-        }
-    }
-    
-    if (!config.debug) fs.rmSync(`${downloadPath}.mp4`);
-
-    // Delete cover art if coverFilename not set
-    if (coverExists && !config.coverFilename) {
-        fs.rmSync(coverPath);
-    }
-
-    log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
-
-    function log(msg, level) {
-        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${details.track.title} - ${details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
-        if (level) {
-            logger.log(level, log, true, true);
-        } else {
-            logger.info(log, true);
-        }
-    }
-}
-
-async function downloadVideo(details, downloadPath, quality) {
-    const download = new Download({
-        details,
-        quality,
-        downloadPath,
-        coverPath: `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`
-    });
-    
-    await download.getSegments();
-    await download.getMetadata();
-    await download.downloadSegments();
-    await download.createMedia();
-    if (!config.debug) download.removeContainerFile();
-    if (!config.coverFilename) download.removeCoverFile();
-}
-
-
 async function authorize() {
     if (secrets.accessToken &&
         secrets.accessTokenExpiry > Date.now()) return logger.debug('Token still valid, not refreshing'); // Previous token is still valid
@@ -563,6 +437,7 @@ async function authorizeWithDeviceAuthorization(params = {}) {
 };
 
 function showHelp() {
+    // hell hell hell hell hell
     logger.log(null,
 `
 Usage:
@@ -571,11 +446,13 @@ Options:
   ${argOptions.map(arg => `${
     `${[
         arg.name ? `--${arg.name}` : null, 
-        arg.shortName ? `-${arg.shortName}` : null
+        arg.shortName ? `-${arg.shortName}` : null,
+        ...(arg.aliases ? arg.aliases.map(alias => [`--${alias}`]) : []),
+        ...(arg.shortAliases ? arg.shortAliases.map(alias => [`-${alias}`]) : []),
     ]
     .filter(i => i)
     .join(', ')}\
-${arg.valueDescription ? ` <${arg.valueDescription}>` : ''}`.padEnd(40 - 1, ' ')} \
+${arg.valueDescription ? ` <${arg.valueDescription}>` : ''}`.padEnd(60 - 1, ' ')} \
 ${arg.description || 'No description...'}`).join('\n  ')}
 `.trim());
 
