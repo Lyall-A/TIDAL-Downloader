@@ -6,7 +6,7 @@ function extractAudioStream(inputPath, outputPath) {
     return spawn(config.ffmpegPath, [
         '-i', inputPath,
         '-map_metadata', '-1',
-        '-c:a', 'copy',
+        '-c', 'copy',
         outputPath,
         '-y'
     ]).then(spawnedProcess => {

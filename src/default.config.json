@@ -3,7 +3,7 @@
     "albumDirectory": "./Downloads/{{albumArtist.name}}/{{album.title}} ({{releaseYear}})",
     "trackFilename": "{{artist.name}} - {{album.title}} - {{track.title}} - {{trackNumberPadded}}",
     "videoDirectory": "./Downloads/{{artist.name}}/{{video.title}} ({{releaseYear}})",
-    "videoFilename": "{{artist.name}} - {{track.title}}",
+    "videoFilename": "{{artist.name}} - {{video.title}}",
     "trackQuality": "MAX",
     "videoQuality": null,
     "getLyrics": true,

@@ -8,7 +8,7 @@ const getPlaybackInfo = require('./getPlaybackInfo');
 const parseManifest = require('./parseManifest');
 const createMedia = require('./createMedia');
 const embedMetadata = require('./embedMetadata');
-const extractAudioStream = require('./extractContainer');
+const extractContainer = require('./extractContainer');
 const getLyrics = require('./getLyrics');
 const formatString = require('./formatString');
 
@@ -72,7 +72,6 @@ class Download {
 
             // this.segmentUrls = segmentManifests[segmentManifests.length - 1].segments;
             this.segmentUrls = segmentManifest.segments;
-            console.log(segmentManifest)
             
             this.containerExtension = '.ts';
             this.extension = '.mp4';
@@ -151,11 +150,10 @@ class Download {
     }
 
     async createMedia() {
-        
         if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
             // Extract from container
             this.log(`Creating ${this.extension} from ${this.containerExtension} container...`);
-            await extractAudioStream(`${this.downloadPath}${this.containerExtension}`, `${this.downloadPath}${this.extension}`);
+            await extractContainer(`${this.downloadPath}${this.containerExtension}`, `${this.downloadPath}${this.extension}`);
         }
         
         if (config.embedMetadata) {
@@ -163,7 +161,7 @@ class Download {
             if (config.metadataEmbedder === 'kid3') {
                 // Embed via kid3
                 this.log('Embedding metadata...');
-                await embedMetadata(trackPath, [...this.metadata, ['picture', fs.existsSync(this.coverPath) ? this.coverPath : undefined, true]]).catch(err => {
+                await embedMetadata(`${this.downloadPath}${this.extension}`, [...this.metadata, ['picture', fs.existsSync(this.coverPath) ? this.coverPath : undefined, true]]).catch(err => {
                     this.log(`Failed to embed metadata: ${err.message}`, 'error');
                 });
             } else {
