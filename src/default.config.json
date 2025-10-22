@@ -1,9 +1,9 @@
 {
     "_version": 1,
     "albumDirectory": "./Downloads/{{albumArtist.name}}/{{album.title}} ({{releaseYear}})",
-    "trackFilename": "{{artist.name}} - {{album.title}} - {{track.title}} - {{trackNumberPadded}}",
-    "videoDirectory": "./Downloads/{{artist.name}}/{{video.title}} ({{releaseYear}})",
-    "videoFilename": "{{artist.name}} - {{video.title}}",
+    "trackFilename": "{{artist.name}} - {{album.title}} - {{title}} - {{trackNumberPadded}}",
+    "videoDirectory": "./Downloads/{{artist.name}}/{{title}} ({{releaseYear}})",
+    "videoFilename": "{{artist.name}} - {{title}}",
     "trackQuality": "MAX",
     "videoQuality": "MAX",
     "getLyrics": true,

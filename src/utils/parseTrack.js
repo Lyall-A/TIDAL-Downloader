@@ -5,6 +5,8 @@ function parseTrack(track) {
     return {
         id: track.id,
         title: track.title,
+        fullTitle: `${track.title}${track.version ? ` (${track.version})` : ''}`,
+        version: track.version,
         duration: track.duration,
         upload: track.upload,
         copyright: track.copyright,

@@ -112,7 +112,7 @@ if (options.help) showHelp();
                 item.video ? item.video.id : 
                 null,
             title:
-                item.track ? item.track.title :
+                item.track ? item.track.fullTitle :
                 item.video ? item.video.title :
                 null,
             cover:
@@ -186,7 +186,7 @@ if (options.help) showHelp();
                 albumArtists
             });
 
-            logger.info(`Found track: ${Logger.applyColor({ bold: true }, `${track.title} - ${track.artists[0].name}`)} (${track.id})`, true, true);
+            logger.info(`Found track: ${Logger.applyColor({ bold: true }, `${track.fullTitle} - ${track.artists[0].name}`)} (${track.id})`, true, true);
         } catch (err) {
             logger.error(`Could not find track ID: ${Logger.applyColor({ bold: true }, trackId)}`, true, true);
         }
