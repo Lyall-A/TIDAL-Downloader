@@ -9,6 +9,7 @@ function parseTrack(track) {
         upload: track.upload,
         copyright: track.copyright,
         explicit: track.explicit,
+        isrc: track.isrc,
         quality: track.audioQuality,
         modes: track.audioModes,
         qualityTypes: track.mediaMetadata?.tags,

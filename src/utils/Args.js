@@ -3,13 +3,14 @@ class Args {
 
     constructor(argv = process.argv, argOptions = []) {
         argv.forEach((arg, argIndex) => {
-            const shortArg = arg.match(/^(?<!-)-([^-\s]+)$/)?.[1];
-            const longArg = arg.match(/^--([^-\s]+)$/)?.[1];
+            const shortArg = arg.match(/^-([^-][^\s]*)$/)?.[1];
+            const longArg = arg.match(/^--([^-][^\s]*)$/)?.[1];
             const argName = shortArg || longArg;
             if (!argName) return;
 
             const options = argOptions.find(options => {
                 if (options.shortName && options.shortName === shortArg) return true;
+                if (options.shortAliases && options.shortAliases.includes(shortArg)) return true;
                 if (options.name && options.name === longArg) return true;
                 if (options.aliases && options.aliases.includes(longArg)) return true;
             });

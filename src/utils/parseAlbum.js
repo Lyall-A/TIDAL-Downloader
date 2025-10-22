@@ -14,6 +14,7 @@ function parseAlbum(album, additional = { }) {
         releaseDate: album.releaseDate,
         copyright: album.copyright,
         explicit: album.explicit,
+        upc: album.upc,
         covers: album.cover && Object.fromEntries(Object.entries(tidalAlbumCoverSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, '/')}/${size}.jpg`])) || undefined,
         videoCovers: album.videoCover && Object.fromEntries(Object.entries(tidalAlbumCoverSizes).map(([name, size]) => [name, `${config.resourcesBaseUrl}/videos/${album.cover.replace(/-/g, '/')}/${size}.mp4`])) || undefined,
         // cover: album.cover && `${config.resourcesBaseUrl}/images/${album.cover.replace(/-/g, '/')}/origin.jpg` || undefined,
