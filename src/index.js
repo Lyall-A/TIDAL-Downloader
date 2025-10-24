@@ -197,8 +197,11 @@ if (options.help) showHelp();
 
         try {
             const album = await findAlbum(albumId);
-            for (const track of album.tracks) tracks.push(await findTrack(track.id));
 
+            if (album.upload && !config.allowUserUploads) throw new Error();
+
+            for (const track of album.tracks) tracks.push(await findTrack(track.id));
+            
             for (const track of tracks) {
                 const artists = [];
                 const albumArtists = [];

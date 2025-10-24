@@ -7,8 +7,10 @@ function parseAlbum(album, additional = { }) {
     return {
         id: album.id,
         title: album.title,
+        version: album.version,
         description: additional?.description,
         duration: album.duration,
+        upload: album.upload,
         trackCount: album.numberOfTracks,
         volumeCount: album.numberOfVolumes,
         releaseDate: album.releaseDate,
