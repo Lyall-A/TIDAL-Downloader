@@ -108,10 +108,6 @@ class Download {
             ['albumartist', config.artistSeperator ? this.details.albumArtists?.map(i => i.name).join(config.artistSeperator) : this.details.albumArtist?.name],
             ['date', this.details.releaseDate],
             ['originalyear', this.details.releaseYear],
-            ['rating', this.details.explicit ? 'Explicit' : 'Clean'],
-            ['isrc', this.details.track?.isrc],
-            ['upc', this.details.album?.upc], // NOTE: private api doesn't include this so always blank
-            ['copyright', this.details.track?.copyright],
             ['tracktotal', this.details.album?.trackCount],
             ['tracknumber', this.details.track?.trackNumber],
             ['disctotal', this.details.album?.volumeCount],
@@ -120,6 +116,10 @@ class Download {
             ['replaygain_album_peak', this.playbackInfo.albumPeakAmplitude],
             ['replaygain_track_gain', this.playbackInfo.trackReplayGain || this.details.track?.replayGain], // NOTE: details.track.replayGain is actually playbackInfo.albumReplayGain
             ['replaygain_track_peak', this.playbackInfo.trackPeakAmplitude || this.details.track?.peak],
+            ['copyright', this.details.track?.copyright],
+            ['barcode', this.details.album?.upc],
+            ['isrc', this.details.track?.isrc],
+            ['itunesadvisory', this.details.explicit === true ? '1' : this.details.explicit === false ? '2' : null],
             ['bpm', this.details.track?.bpm],
             ['lyrics',
                 config.syncedLyricsOnly ? this.lyrics?.syncedLyrics :
