@@ -17,6 +17,7 @@
     "videoCoverSize": "1280x720",
     "customMetadata": [
         ["comment", "Downloaded from TIDAL: {{url}}"],
+        ["source", "TIDAL"],
         ["tidal_albumid", "{{album.id}}"],
         ["tidal_albumartistid", "{{albumArtist.id}}"],
         ["tidal_trackid", "{{track.id}}"],
