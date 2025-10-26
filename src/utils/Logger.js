@@ -5,7 +5,7 @@ class Logger {
         this.debugLogs = options.debugLogs ?? false;
         this.levelPadding = options.levelPadding ?? null;
         this.levels = options.levels ?? [
-            { name: 'INFO', id: 'info', fgColor: 34 },
+            { name: 'INFO', id: 'info', prefix: '' },
             { name: 'WARN', id: 'warn', fgColor: 93 },
             { name: 'ERROR', id: 'error', fgColor: 31 },
             { name: 'DEBUG', id: 'debug', fgColor: 90 },
@@ -66,18 +66,33 @@ class Logger {
         return `\x1b[${ansiCodes.filter(i => i).join(';')}m${string !== undefined ? `${string}\x1b[${Logger.ANSI_CODES.RESET}m` : ''}`;
     }
 
+    static getDisplayedLength(string) {
+        return string.replace(/\x1b\[[0-9;]*m/g, '').length;
+    }
+
     emptyLine() {
         this.log(null, '');
     }
 
-    log(levelId, msg, replaceLine, noStore) {
+    getLevel(levelId) {
         const level = this.levels.find(i => i.id === levelId);
+        if (!level) return;
+
+        return {
+            ...level,
+            prefix: level.prefix ?? `[${Logger.applyColor({ fg: level.fgColor, bg: level.bgColor }, level.name)}]${this.levelPadding ? ' '.repeat(this.levelPadding - level.name.length) : ''} `,
+            suffix: level.suffix ?? ''
+        }
+    }
+
+    log(levelId, msg, replaceLine, noStore) {
+        const level = this.getLevel(levelId);
         if (!this.debugLogs && level?.id === 'debug') return;
 
         if (replaceLine && !this.debugLogs) {
             const lastLogLines = this.lastLog.split('\n');
             const [windowWidth, windowHeight] = process.stdout.getWindowSize();
-            const lastLogLineCount = lastLogLines.length + lastLogLines.reduce((sum, line) => sum + Math.floor((line.replace(/\x1b\[[0-9;]*m/g, '').length - 1) / windowWidth), 0); // calculate line count, including \n's and text wrapping
+            const lastLogLineCount = lastLogLines.length + lastLogLines.reduce((sum, line) => sum + Math.floor((Logger.getDisplayedLength(line) - 1) / windowWidth), 0); // calculate line count, including \n's and text wrapping
             
             for (let lineIndex = 0; lineIndex < lastLogLineCount; lineIndex++) {
                 process.stdout.moveCursor(0, -1);
@@ -85,9 +100,7 @@ class Logger {
             }
         }
 
-        const prefix = level?.prefix ?? level ? `[${Logger.applyColor({ fg: level.fgColor, bg: level.bgColor }, level.name)}]${this.levelPadding ? ' '.repeat(this.levelPadding - level.name.length) : ''} ` : '';
-        const suffix = level?.suffix ?? '';
-        const log = `${prefix}${msg}${suffix}\n`;
+        const log = `${level?.prefix || ''}${msg}${level?.suffix || ''}\n`;
         this.lastLog = !noStore ? log : '';
 
         process.stdout.write(log);

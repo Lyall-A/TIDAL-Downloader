@@ -183,7 +183,10 @@ class Download {
     }
 
     log(msg, level) {
-        const log = `${`Downloading ${Logger.applyColor({ bold: true }, `${this.details.title} - ${this.details.artist.name}`)}: `.padEnd(config.downloadLogPadding, ' ')}${msg}`;
+        const levelPrefix = logger.getLevel(level)?.prefix;
+        const logPrefix = `Downloading ${Logger.applyColor({ bold: true }, `${this.details.title} - ${this.details.artist.name}`)}: `;
+        const padding = ' '.repeat(Math.max(config.downloadLogPadding - Logger.getDisplayedLength(`${levelPrefix || ''}${logPrefix}`), 0));
+        const log = `${logPrefix}${padding}${msg}`;
         if (level) {
             logger.log(level, log, true, true);
         } else {
