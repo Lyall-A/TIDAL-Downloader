@@ -103,9 +103,11 @@ class Download {
 
         this.metadata = [
             ['title', this.details.title],
-            ['artist', config.artistSeperator ? this.details.artists?.map(i => i.name).join(config.artistSeperator) : this.details.artist?.name],
+            ['artist', (config.useArtistsTag || !config.artistSeperator) ? this.details.artist?.name : this.details.artists?.map(i => i.name).join(config.artistSeperator)],
+            ['artists', config.useArtistsTag ? config.artistSeperator ? this.details.artists?.map(i => i.name).join(config.artistSeperator) : this.details.artist?.name : null],
             ['album', this.details.album?.title],
-            ['albumartist', config.artistSeperator ? this.details.albumArtists?.map(i => i.name).join(config.artistSeperator) : this.details.albumArtist?.name],
+            ['albumartist', (config.useArtistsTag || !config.artistSeperator) ? this.details.albumArtist?.name : this.details.albumArtists?.map(i => i.name).join(config.artistSeperator)],
+            ['albumartists', config.useArtistsTag ? config.artistSeperator ? this.details.albumArtists?.map(i => i.name).join(config.artistSeperator) : this.details.albumArtist?.name : null],
             ['date', this.details.releaseDate],
             ['originalyear', this.details.releaseYear],
             ['tracktotal', this.details.album?.trackCount],

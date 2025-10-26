@@ -11,6 +11,7 @@
     "plainLyricsOnly": false,
     "embedMetadata": true,
     "artistSeperator": "; ",
+    "useArtistsTag": false,
     "allowUserUploads": false,
     "coverFilename": "cover",
     "trackCoverSize": "1280",

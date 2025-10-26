@@ -20,6 +20,8 @@ Coming eventually
 <img src="https://raw.githubusercontent.com/Lyall-A/tidalwave/main/assets/screenshot-1.png">
 
 ## Configuration
+`useArtistsTag` can be set to `true` or `false` to enable/disable `artists` and `albumartists` tag
+
 `trackCoverSize` can be set to `original` for very high quality cover art, however this breaks FFmpeg embedding if it's over 16MB
 
 `metadataEmbedder` can be set to `ffmpeg` or `kid3` to change how metadata is embedded, `kid3` must be downloaded for it to work
