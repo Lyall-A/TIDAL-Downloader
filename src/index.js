@@ -159,7 +159,8 @@ if (options.help) showHelp();
             trackQuality,
             videoQuality,
             downloadPath,
-            coverPath: `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`
+            coverPath: `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`,
+            getLyrics: options.lyrics
         }).download();
     }
 
@@ -173,7 +174,7 @@ if (options.help) showHelp();
         try {
             const track = await findTrack(trackId);
 
-            if (track.upload && !config.allowUserUploads) throw new Error();
+            if (track.upload && !config.allowUserUploads) throw new Error('User uploads are disabled');
 
             const album = await findAlbum(track.album.id);
             for (const artist of track.artists) artists.push(await findArtist(artist.id));
@@ -198,7 +199,7 @@ if (options.help) showHelp();
         try {
             const album = await findAlbum(albumId);
 
-            if (album.upload && !config.allowUserUploads) throw new Error();
+            if (album.upload && !config.allowUserUploads) throw new Error('User uploads are disabled');
 
             for (const track of album.tracks) tracks.push(await findTrack(track.id));
             
