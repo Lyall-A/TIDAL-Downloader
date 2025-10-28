@@ -29,6 +29,7 @@ const options = {
     trackQuality: (args.get('track-quality') ?? config.trackQuality)?.toLowerCase(),
     videoQuality: (args.get('video-quality') ?? config.videoQuality)?.toLowerCase(),
     lyrics: args.get('lyrics') ?? config.getLyrics,
+    cover: args.get('cover') ?? config.getCover
 };
 if (options.help) showHelp();
 
@@ -137,10 +138,8 @@ if (options.help) showHelp();
                 null,
         };
 
-        const downloadPath = path.join(execDir, formatPath(path.join(
-            details.isTrack ? config.albumDirectory : config.videoDirectory,
-            details.isTrack ? config.trackFilename : config.videoFilename
-        ), details));
+        const directory = path.join(execDir, formatPath(details.isTrack ? config.albumDirectory : config.videoDirectory, details));
+        const mediaFilename = formatPath(details.isTrack ? config.trackFilename : config.videoFilename, details);
 
         const trackQuality =
             options.trackQuality === 'low' ? 'HIGH' :
@@ -156,11 +155,27 @@ if (options.help) showHelp();
 
         await new Download({
             details,
+            logger,
             trackQuality,
             videoQuality,
-            downloadPath,
-            coverPath: `${config.coverFilename ? path.join(path.dirname(downloadPath), formatPath(config.coverFilename, details)) : downloadPath}.jpg`,
-            getLyrics: options.lyrics
+            directory,
+            mediaFilename,
+            coverFilename: config.coverFilename ? formatPath(config.coverFilename, details) : mediaFilename,
+            overwriteExisting: config.overwriteExisting,
+            embedMetadata: config.embedMetadata,
+            metadataEmbedder: config.metadataEmbedder,
+            keepCoverFile: config.coverFilename ? true : false,
+            getCover: options.cover,
+            getLyrics: options.lyrics,
+            syncedLyricsOnly: config.syncedLyricsOnly,
+            plainLyricsOnly: config.plainLyricsOnly,
+            useArtistsTag: config.useArtistsTag,
+            artistSeperator: config.artistSeperator,
+            customMetadata: config.customMetadata,
+            keepContainerFile: config.debug ? true : false,
+            segmentWaitMin: config.segmentWaitMin,
+            segmentWaitMax: config.segmentWaitMax,
+            downloadLogPadding: config.downloadLogPadding,
         }).download();
     }
 

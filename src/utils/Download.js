@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { setTimeout } = require('timers/promises');
 
-const { config, logger } = require('../globals');
 const Logger = require('./Logger');
 const getPlaybackInfo = require('./getPlaybackInfo');
 const parseManifest = require('./parseManifest');
@@ -17,30 +16,48 @@ class Download {
     manifest;
     segmentUrls;
     containerExtension;
-    extension;
+    mediaExtension;
+    coverExtension = '.jpg';
     lyrics;
     metadata;
 
     constructor(options = { }) {
         this.details = options.details;
+        this.logger = options.logger;
         this.trackQuality = options.trackQuality;
         this.videoQuality = options.videoQuality;
-        this.downloadPath = options.downloadPath;
-        this.coverPath = options.coverPath;
+        this.directory = options.directory;
+        this.mediaFilename = options.mediaFilename;
+        this.coverFilename = options.coverFilename ?? 'cover';
+        this.overwriteExisting = options.overwriteExisting ?? false;
+        this.embedMetadata = options.embedMetadata ?? true;
+        this.metadataEmbedder = options.metadataEmbedder ?? 'ffmpeg';
+        this.keepCoverFile = options.keepCoverFile ?? true;
+        this.getCover = options.getCover ?? true;
+        this.getLyrics = options.getLyrics ?? true;
+        this.syncedLyricsOnly = options.syncedLyricsOnly ?? false;
+        this.plainLyricsOnly = options.plainLyricsOnly ?? false;
+        this.useArtistsTag = options.useArtistsTag ?? true;
+        this.artistSeperator = options.artistSeperator;
+        this.customMetadata = options.customMetadata;
+        this.keepContainerFile = options.keepContainerFile ?? false;
+        this.segmentWaitMin = options.segmentWaitMin ?? 0;
+        this.segmentWaitMax = options.segmentWaitMax ?? 0;
+        this.downloadLogPadding = options.downloadLogPadding ?? 0;
     }
     
     async download() {
         const startDate = Date.now();
-        logger.lastLog = '';
+        this.logger.lastLog = '';
 
-        fs.mkdirSync(path.dirname(this.downloadPath), { recursive: true }); // Create directory
+        fs.mkdirSync(this.directory, { recursive: true }); // Create directory
         await this.getSegments(); // Get segment URL's
-        if (fs.existsSync(`${this.downloadPath}${this.extension}`) && !config.overwriteExisting) return this.log('Already downloaded!'); // Check if already downloaded
+        if (fs.existsSync(this.getMediaPath()) && !this.overwriteExisting) return this.log('Already downloaded!'); // Check if already downloaded
         await this.downloadSegments(); // Download segments
-        await this.getMetadata(); // Get metadata
+        if (this.embedMetadata) await this.getMetadata(); // Get metadata
         await this.createMedia(); // Create output
-        if (!config.debug) fs.rmSync(`${this.downloadPath}${this.containerExtension}`); // Delete container file
-        if (!config.coverFilename && fs.existsSync(this.coverPath)) fs.rmSync(this.coverPath); // Delete cover file
+        if (!this.keepContainerFile) fs.rmSync(this.getContainerPath()); // Delete container file
+        if (!this.keepCoverFile && fs.existsSync(this.getCoverPath())) fs.rmSync(this.getCoverPath()); // Delete cover file
 
         this.log(`Completed (${Math.floor((Date.now() - startDate) / 1000)}s)`);
     }
@@ -53,7 +70,7 @@ class Download {
         if (this.details.isTrack) {
             this.segmentUrls = this.manifest.segments;
             this.containerExtension = '.mp4';
-            this.extension = this.manifest.codecs === 'flac' ? '.flac' : '.m4a'; // TODO: is it safe to assume AAC if not FLAC?
+            this.mediaExtension = this.manifest.codecs === 'flac' ? '.flac' : '.m4a'; // TODO: is it safe to assume AAC if not FLAC?
         } else if (this.details.isVideo) {
             const segmentManifests = this.manifest.mainManifests[0].segmentManifests;
 
@@ -74,7 +91,7 @@ class Download {
             this.segmentUrls = segmentManifest.segments;
             
             this.containerExtension = '.ts';
-            this.extension = '.mp4';
+            this.mediaExtension = '.mp4';
         }
 
         return this.segmentUrls;
@@ -82,18 +99,18 @@ class Download {
 
     async getMetadata() {
         // Get lyrics
-        if (this.details.isTrack) {
+        if (this.getLyrics && this.details.isTrack) {
             this.log('Getting lyrics...');
             this.lyrics = await getLyrics(this.details.id).catch(err => this.log('Failed to get lyrics (does it have any?)', 'warn')); // TODO: maybe don't log or change to debug?
         }
 
         // Download cover
-        if (this.coverPath && !fs.existsSync(this.coverPath)) {
+        if (this.getCover && !fs.existsSync(this.getCoverPath())) {
             this.log('Downloading cover...');
             await fetch(this.details.cover).then(async res => {
                 if (res.status !== 200) throw new Error(`Got status code ${res.status}`);
                 const coverBuffer = Buffer.from(await res.arrayBuffer());
-                fs.writeFileSync(this.coverPath, coverBuffer);
+                fs.writeFileSync(this.getCoverPath(), coverBuffer);
             }).catch(err => {
                 this.log(`Failed to download cover: ${err.message}`, 'error');
             });
@@ -103,11 +120,11 @@ class Download {
 
         this.metadata = [
             ['title', this.details.title],
-            ['artist', (config.useArtistsTag || !config.artistSeperator) ? this.details.artist?.name : this.details.artists?.map(i => i.name).join(config.artistSeperator)],
-            ['artists', config.useArtistsTag ? config.artistSeperator ? this.details.artists?.map(i => i.name).join(config.artistSeperator) : this.details.artist?.name : null],
+            ['artist', (this.useArtistsTag || !this.artistSeperator) ? this.details.artist?.name : this.details.artists?.map(i => i.name).join(this.artistSeperator)],
+            ['artists', this.useArtistsTag ? this.artistSeperator ? this.details.artists?.map(i => i.name).join(this.artistSeperator) : this.details.artist?.name : null],
             ['album', this.details.album?.title],
-            ['albumartist', (config.useArtistsTag || !config.artistSeperator) ? this.details.albumArtist?.name : this.details.albumArtists?.map(i => i.name).join(config.artistSeperator)],
-            ['albumartists', config.useArtistsTag ? config.artistSeperator ? this.details.albumArtists?.map(i => i.name).join(config.artistSeperator) : this.details.albumArtist?.name : null],
+            ['albumartist', (this.useArtistsTag || !this.artistSeperator) ? this.details.albumArtist?.name : this.details.albumArtists?.map(i => i.name).join(this.artistSeperator)],
+            ['albumartists', this.useArtistsTag ? this.artistSeperator ? this.details.albumArtists?.map(i => i.name).join(this.artistSeperator) : this.details.albumArtist?.name : null],
             ['date', this.details.releaseDate],
             ['originalyear', this.details.releaseYear],
             ['tracktotal', this.details.album?.trackCount],
@@ -124,16 +141,16 @@ class Download {
             ['itunesadvisory', this.details.explicit === true ? '1' : this.details.explicit === false ? '2' : null],
             ['bpm', this.details.track?.bpm],
             ['lyrics',
-                config.syncedLyricsOnly ? this.lyrics?.syncedLyrics :
-                config.plainLyricsOnly ? this.lyrics?.plainLyrics :
+                this.syncedLyricsOnly ? this.lyrics?.syncedLyrics :
+                this.plainLyricsOnly ? this.lyrics?.plainLyrics :
                 this.lyrics?.syncedLyrics || this.lyrics?.plainLyrics],
-            ...(config.customMetadata?.map(i => ([i[0], formatString(i[1], this.details)])) || [])
+            ...(this.customMetadata?.map(i => ([i[0], formatString(i[1], this.details)])) || [])
         ];
         // console.log(this.metadata);
     }
         
     async downloadSegments() {
-        const stream = fs.createWriteStream(`${this.downloadPath}${this.containerExtension}`);
+        const stream = fs.createWriteStream(this.getContainerPath());
 
         for (let segmentIndex = 0; segmentIndex < this.segmentUrls.length; segmentIndex++) {
             const segmentUrl = this.segmentUrls[segmentIndex]
@@ -144,7 +161,7 @@ class Download {
             const segmentData = await fetch(segmentUrl).then(async res => Buffer.from(await res.arrayBuffer()));
             stream.write(segmentData);
 
-            const delay = Math.floor(Math.random() * (config.segmentWaitMax - config.segmentWaitMin + 1) + config.segmentWaitMin);
+            const delay = Math.floor(Math.random() * (this.segmentWaitMax - this.segmentWaitMin + 1) + this.segmentWaitMin);
             if (delay) await setTimeout(delay)
         }
 
@@ -152,45 +169,49 @@ class Download {
     }
 
     async createMedia() {
-        if (!config.embedMetadata || config.metadataEmbedder !== 'ffmpeg') {
+        if (!this.embedMetadata || this.metadataEmbedder !== 'ffmpeg') {
             // Extract from container
-            this.log(`Creating ${this.extension} from ${this.containerExtension} container...`);
-            await extractContainer(`${this.downloadPath}${this.containerExtension}`, `${this.downloadPath}${this.extension}`);
+            this.log(`Creating ${this.mediaExtension} from ${this.containerExtension} container...`);
+            await extractContainer(this.getContainerPath(), this.getMediaPath());
         }
         
-        if (config.embedMetadata) {
+        if (this.embedMetadata) {
             // Embed metadata
-            if (config.metadataEmbedder === 'kid3') {
+            if (this.metadataEmbedder === 'kid3') {
                 // Embed via kid3
                 this.log('Embedding metadata...');
-                await embedMetadata(`${this.downloadPath}${this.extension}`, [...this.metadata, ['picture', fs.existsSync(this.coverPath) ? this.coverPath : undefined, true]]).catch(err => {
+                await embedMetadata(this.getMediaPath(), [...this.metadata, ['picture', fs.existsSync(this.getCoverPath()) ? this.getCoverPath() : undefined, true]]).catch(err => {
                     this.log(`Failed to embed metadata: ${err.message}`, 'error');
                 });
             } else {
                 // Extract and embed via FFmpeg
-                this.log(`Creating ${this.extension} with metadata from ${this.containerExtension} container...`);
-                await createMedia(`${this.downloadPath}${this.containerExtension}`, `${this.downloadPath}${this.extension}`, fs.existsSync(this.coverPath) ? this.coverPath : undefined, this.metadata, this.details.isVideo ? 2 : 1);
+                this.log(`Creating ${this.mediaExtension} with metadata from ${this.containerExtension} container...`);
+                await createMedia(this.getContainerPath(), this.getMediaPath(), fs.existsSync(this.getCoverPath()) ? this.getCoverPath() : undefined, this.metadata, this.details.isVideo ? 2 : 1);
             }
         }
     }
 
-    removeContainerFile() {
-        fs.rmSync(`${this.downloadPath}${this.containerExtension}`);
+    getMediaPath() {
+        return path.join(this.directory, `${this.mediaFilename}${this.mediaExtension}`);
     }
 
-    removeCoverFile() {
-        if (fs.existsSync(this.coverPath)) fs.rmSync(this.coverPath);
+    getContainerPath() {
+        return path.join(this.directory, `${this.mediaFilename}${this.containerExtension}`);
+    }
+
+    getCoverPath() {
+        return path.join(this.directory, `${this.coverFilename}${this.coverExtension}`);
     }
 
     log(msg, level) {
-        const levelPrefix = logger.getLevel(level)?.prefix;
-        const logPrefix = `Downloading ${Logger.applyColor({ bold: true }, `${this.details.title} - ${this.details.artist.name}`)}: `;
-        const padding = ' '.repeat(Math.max(config.downloadLogPadding - Logger.getDisplayedLength(`${levelPrefix || ''}${logPrefix}`), 0));
+        const levelPrefix = this.logger.getLevel(level)?.prefix;
+        const logPrefix = `Downloading ${Logger.applyColor({ bold: true }, this.details.title)} - ${Logger.applyColor({ bold: true }, this.details.artist.name)}: `;
+        const padding = ' '.repeat(Math.max(this.downloadLogPadding - Logger.getDisplayedLength(`${levelPrefix || ''}${logPrefix}`), 0));
         const log = `${logPrefix}${padding}${msg}`;
         if (level) {
-            logger.log(level, log, true, true);
+            this.logger.log(level, log, true, true);
         } else {
-            logger.info(log, true);
+            this.logger.info(log, true);
         }
     }
 }

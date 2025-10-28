@@ -41,6 +41,7 @@ module.exports = {
         { name: 'track-quality', shortName: 'tq', aliases: ['quality'], shortAliases: ['q'], description: 'Sets track download quality', valueDescription: 'low|high|max' },
         { name: 'video-quality', shortName: 'vq', description: 'Sets video download quality', valueDescription: 'low|high|max|<height>' },
         { name: 'lyrics', shortName: 'l', type: 'bool', description: 'Enables or disables lyrics embedding', valueDescription: 'yes|no' },
+        { name: 'cover', shortName: 'c', type: 'bool', description: 'Enables or disables cover embedding', valueDescription: 'yes|no' },
     ],
     tidalVideoCoverSizes: {
         '640': '640x640',

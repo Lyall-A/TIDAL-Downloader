@@ -13,6 +13,7 @@
     "artistSeperator": "; ",
     "useArtistsTag": false,
     "allowUserUploads": false,
+    "getCover": true,
     "coverFilename": "cover",
     "trackCoverSize": "1280",
     "videoCoverSize": "1280x720",

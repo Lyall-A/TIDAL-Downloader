@@ -12,6 +12,7 @@ A TIDAL downloader for tracks, albums, videos, artist discographies and playlist
 * `--track-quality <low|high|max>`, `-tq`: Set download quality, defaults to `trackQuality` in config
 * `--video-quality low|high|max|<height>`, `-vq`: Set download quality, defaults to `videoQuality` in config
 * `--lyrics <yes|no>`, `-l`: Sets if lyrics should be embedded or not, defaults to `getLyrics` in config
+* `--cover <yes|no>`, `-c`: Sets if cover should be embedded or not, defaults to `getCover` in config
 
 ## Usage
 Coming eventually
