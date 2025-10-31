@@ -35,7 +35,7 @@ module.exports = {
         { name: 'album', shortName: 'm', type: 'int', description: 'Downloads album', valueDescription: 'album-id' },
         { name: 'video', shortName: 'v', description: 'Downloads videos', valueDescription: 'video-id' },
         { name: 'artist', shortName: 'a', type: 'int', description: 'Downloads artist discography', valueDescription: 'artist-id' },
-        { name: 'playlist', shortName: 'p', description: 'Downloads playlist items', valueDescription: 'playlist-uuid' },
+        { name: 'playlist', shortName: 'p', description: 'Downloads items from playlist', valueDescription: 'playlist-uuid' },
         { name: 'search', shortName: 's', description: 'Downloads top search result', valueDescription: 'query' },
         { name: 'search:track', shortName: 's:t', description: 'Downloads top search result for tracks', valueDescription: 'query' },
         { name: 'search:album', shortName: 's:m', description: 'Downloads top search result for albums', valueDescription: 'query' },

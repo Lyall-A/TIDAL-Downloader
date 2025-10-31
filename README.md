@@ -1,23 +1,35 @@
 # Tidalwave
 A TIDAL downloader for tracks, albums, videos, artist discographies and playlists
 
+## Features
+* **Lossless audio** - Downloads in lossless quality by default
+* **Metadata** - Embeds all standard music metadata (title, artists, album, date, etc.)
+* **Lyrics** - Embeds synced/plain lyrics
+* **Cover art** - Downloads and embeds album cover art
+* **Advanced metadata** - Embeds as much metadata as possible, including BPM, copyright, barcode, replaygain, explicit rating and more
+* **Videos** - Can download videos from TIDAL (music videos, etc.)
+* **Playlists** - Can download all tracks from a playlist
+* **Discographies** - Can download an entire artist's discography
+* **Searching** - Allows searching instead of having to provide URL's or ID's
+
 ## Arguments
-* `--track <id>`, `-t`: Download single track
-* `--album <id>`, `-m`: Download single album
-* `--video <id>`, `-v`: Download single video
-* `--artist <id>`, `-a`: Download artist's discography
-* `--playlist <uuid>`, `-p`: Download playlist
-* `--search <query>`, `-s`: Download first search result
-* `--search:track <query>`, `-s:t`: Download first search result for tracks
-* `--search:album <query>`, `-s:m`: Download first search result for albums
-* `--search:video <query>`, `-s:v`: Download first search result for videos
-* `--search:artist <query>`, `-s:a`: Download first search result for artists
-* `--search:playlist <query>`, `-s:p`: Download first search result for playlists
+* `--help`, `-h`: Displays help menu
+* `--track <id>`, `-t`: Downloads track
+* `--album <id>`, `-m`: Downloads album
+* `--video <id>`, `-v`: Downloads videos
+* `--artist <id>`, `-a`: Downloads artist discography
+* `--playlist <uuid>`, `-p`: Downloads items from playlist
+* `--search <query>`, `-s`: Downloads top search result
+* `--search:track <query>`, `-s:t`: Downloads top search result for tracks
+* `--search:album <query>`, `-s:m`: Downloads top search result for albums
+* `--search:video <query>`, `-s:v`: Downloads top search result for videos
+* `--search:artist <query>`, `-s:a`: Downloads top search result for artists
+* `--search:playlist <query>`, `-s:p`: Downloads top search result for playlists
 * `--url <url>`, `-u`: Download from URL
-* `--track-quality <low|high|max>`, `-tq`: Set download quality, defaults to `trackQuality` in config
-* `--video-quality low|high|max|<height>`, `-vq`: Set download quality, defaults to `videoQuality` in config
-* `--lyrics <yes|no>`, `-l`: Sets if lyrics should be embedded or not, defaults to `getLyrics` in config
-* `--cover <yes|no>`, `-c`: Sets if cover should be embedded or not, defaults to `getCover` in config
+* `--track-quality <low|high|max>`, `-tq`: Sets track download quality, defaults to config `trackQuality`
+* `--video-quality <low|high|max|<height>>`, `-vq`: Sets video download quality, defaults to config `videoQuality`
+* `--lyrics <yes|no>`, `-l`: Enables or disables lyrics embedding, defaults to config `getLyrics`
+* `--cover <yes|no>`, `-c`: Enables or disables cover embedding, defaults to config `getCover`
 
 ## Usage
 Coming eventually
@@ -48,7 +60,7 @@ Check out `config.json` for more
 * [Kid3-cli](https://kid3.kde.org) - Alternative option for embedding metadata
 
 ## Warning
-I don't know the risks from doing this. It is possible you can get banned, I'm not sure
+There may be a risk of getting banned for using a tool like this, however i've yet to see that happen
 
 ## How TIDAL authenticates a browser
 * Browser sends request to `https://login.tidal.com/api/email/user/existing` containing a client ID, code challenge, redirect URI, scope, login credentials and more
