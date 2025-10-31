@@ -20,18 +20,35 @@ const args = new Args(process.argv, argOptions);
 const options = {
     help: args.get('help'),
     tracks: args.getAll('track'),
-    artists: args.getAll('artist'),
     albums: args.getAll('album'),
     videos: args.getAll('video'),
+    artists: args.getAll('artist'),
     playlists: args.getAll('playlist'),
-    searches: args.getAll('search'),
+    searches: [
+        ...args.getAll('search').map(query => ({ type: null, query })),
+        ...args.getAll('search:track').map(query => ({ type: 'track', query })),
+        ...args.getAll('search:album').map(query => ({ type: 'album', query })),
+        ...args.getAll('search:video').map(query => ({ type: 'video', query })),
+        ...args.getAll('search:artist').map(query => ({ type: 'artist', query })),
+        ...args.getAll('search:playlist').map(query => ({ type: 'playlist', query })),
+    ],
     urls: args.getAll('url'),
     trackQuality: (args.get('track-quality') ?? config.trackQuality)?.toLowerCase(),
     videoQuality: (args.get('video-quality') ?? config.videoQuality)?.toLowerCase(),
     lyrics: args.get('lyrics') ?? config.getLyrics,
     cover: args.get('cover') ?? config.getCover
 };
-if (options.help) showHelp();
+
+// Show help
+if (options.help || [
+    ...options.tracks,
+    ...options.albums,
+    ...options.videos,
+    ...options.artists,
+    ...options.playlists,
+    ...options.searches,
+    ...options.urls
+].length === 0) showHelp();
 
 (async () => {
     logger.info('Authorizing...');
@@ -51,9 +68,16 @@ if (options.help) showHelp();
     for (const playlistUuid of options.playlists) await addPlaylist(playlistUuid); // Playlists
 
     // Searches
-    for (const query of options.searches) {
+    for (const { type, query } of options.searches) {
         logger.info(`Searching for: ${Logger.applyColor({ bold: true }, query)}`, true);
-        const result = await search(query, 1).then(i => i.topResults[0]);
+        const result = await search(query, 1).then(results => (
+            type === 'track' ? results.tracks.map(value => ({ type, value })) :
+            type === 'album' ? results.albums.map(value => ({ type, value })) :
+            type === 'video' ? results.videos.map(value => ({ type, value })) :
+            type === 'artist' ? results.artists.map(value => ({ type, value })) :
+            type === 'playlist' ? results.playlists.map(value => ({ type, value })) :
+            results.topResults
+        )[0]);
 
         if (result?.type === 'track') await addTrack(result.value.id); else
         if (result?.type === 'album') await addAlbum(result.value.id); else
@@ -80,8 +104,6 @@ if (options.help) showHelp();
             logger.error(`Couldn't determine URL "${Logger.applyColor({ bold: true }, url)}"`, true, true);
         }
     }
-
-    if (queue.length === 0) showHelp();
 
     // const startDate = Date.now();
 

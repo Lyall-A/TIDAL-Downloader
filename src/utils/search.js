@@ -16,9 +16,9 @@ function search(query, limit = 20) {
         return {
             topResults: json.topHits.map(({ type, value }) => {
                 if (type === 'TRACKS') return { type: 'track', value: parseTrack(value) };
-                if (type === 'ALBUMS') return { type: 'album', value: parseTrack(value) };
+                if (type === 'ALBUMS') return { type: 'album', value: parseAlbum(value) };
                 if (type === 'VIDEOS') return { type: 'video', value: parseVideo(value) };
-                if (type === 'ARTISTS') return { type: 'artist', value: parseTrack(value) };
+                if (type === 'ARTISTS') return { type: 'artist', value: parseArtist(value) };
                 if (type === 'PLAYLISTS') return { type: 'playlist', value: parsePlaylist(value) };
             }).filter(i => i),
             tracks: json.tracks.items.map(parseTrack),
