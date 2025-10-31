@@ -38,7 +38,17 @@ const options = {
     lyrics: args.get('lyrics') ?? config.getLyrics,
     cover: args.get('cover') ?? config.getCover
 };
-if (options.help) showHelp();
+
+// Show help
+if (options.help || [
+    ...options.tracks,
+    ...options.albums,
+    ...options.videos,
+    ...options.artists,
+    ...options.playlists,
+    ...options.searches,
+    ...options.urls
+].length === 0) showHelp();
 
 (async () => {
     logger.info('Authorizing...');
@@ -94,8 +104,6 @@ if (options.help) showHelp();
             logger.error(`Couldn't determine URL "${Logger.applyColor({ bold: true }, url)}"`, true, true);
         }
     }
-
-    if (queue.length === 0) showHelp();
 
     // const startDate = Date.now();
 
