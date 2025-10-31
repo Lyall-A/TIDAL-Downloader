@@ -8,6 +8,11 @@ A TIDAL downloader for tracks, albums, videos, artist discographies and playlist
 * `--artist <id>`, `-a`: Download artist's discography
 * `--playlist <uuid>`, `-p`: Download playlist
 * `--search <query>`, `-s`: Download first search result
+* `--search:track <query>`, `-s:t`: Download first search result for tracks
+* `--search:album <query>`, `-s:m`: Download first search result for albums
+* `--search:video <query>`, `-s:v`: Download first search result for videos
+* `--search:artist <query>`, `-s:a`: Download first search result for artists
+* `--search:playlist <query>`, `-s:p`: Download first search result for playlists
 * `--url <url>`, `-u`: Download from URL
 * `--track-quality <low|high|max>`, `-tq`: Set download quality, defaults to `trackQuality` in config
 * `--video-quality low|high|max|<height>`, `-vq`: Set download quality, defaults to `videoQuality` in config
