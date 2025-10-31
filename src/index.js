@@ -25,7 +25,7 @@ const options = {
     artists: args.getAll('artist'),
     playlists: args.getAll('playlist'),
     searches: [
-        ...args.getAll('search').map(query => ({ query })),
+        ...args.getAll('search').map(query => ({ type: null, query })),
         ...args.getAll('search:track').map(query => ({ type: 'track', query })),
         ...args.getAll('search:album').map(query => ({ type: 'album', query })),
         ...args.getAll('search:video').map(query => ({ type: 'video', query })),
