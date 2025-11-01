@@ -11,7 +11,7 @@
     "plainLyricsOnly": false,
     "embedMetadata": true,
     "artistSeperator": "; ",
-    "useArtistsTag": false,
+    "useArtistsTag": true,
     "allowUserUploads": false,
     "getCover": true,
     "coverFilename": "cover",
