@@ -1,5 +1,4 @@
 const tidalApi = require('./tidalApi');
-
 const parsePlaylist = require('./parsePlaylist');
 
 async function getPlaylist(playlistUuid) {
